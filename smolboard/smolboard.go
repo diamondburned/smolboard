@@ -1,7 +1,7 @@
 package starboard
 
 import (
-	"github.com/diamondburned/smolboard/smolboard/session"
+	"github.com/diamondburned/smolboard/smolboard/db"
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 )
@@ -9,12 +9,12 @@ import (
 // Config is the global application config.
 type Config struct {
 	HTTPAddr string `ini:"http_address"`
-	session.Config
+	db.Config
 }
 
 func NewConfig() Config {
 	return Config{
-		Config: session.NewConfig(),
+		Config: db.NewConfig(),
 	}
 }
 
@@ -29,7 +29,7 @@ func (c *Config) Validate() error {
 type App struct {
 	*chi.Mux // go-chi gang go-chi gang
 
-	store *session.Database
+	store *db.Database
 }
 
 func New(config Config) (*App, error) {
@@ -37,7 +37,7 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	s, err := session.NewDatabase(config.Config)
+	s, err := db.NewDatabase(config.Config)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create database")
 	}

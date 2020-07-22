@@ -1,14 +1,15 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/bwmarrin/snowflake"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
+	"github.com/mattn/go-sqlite3"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -35,12 +36,12 @@ var migrations = []string{`
 	);
 
 	CREATE TABLE posts (
-		id    INTEGER PRIMARY KEY, -- Snowflake
-		owner INTEGER REFERENCES users(username)
+		id     INTEGER PRIMARY KEY, -- Snowflake
+		poster INTEGER REFERENCES users(username)
 			ON UPDATE CASCADE
 			ON DELETE SET NULL,
-		fileext    TEXT    NOT NULL,
-		permission INTEGER NOT NULL -- canAccess := users(perm) >= posts(perm)
+		contenttype TEXT    NOT NULL,
+		permission  INTEGER NOT NULL -- canAccess := users(perm) >= posts(perm)
 	);
 
 	CREATE TABLE posttags (
@@ -50,6 +51,7 @@ var migrations = []string{`
 `}
 
 type Config struct {
+	Owner         string `ini:"owner"`
 	DatabasePath  string `ini:"database_path"`
 	MaxTokenUses  int    `ini:"max_token_uses"`
 	TokenLifespan string `ini:"token_lifespan"`
@@ -65,9 +67,9 @@ func NewConfig() Config {
 }
 
 func (c *Config) Validate() error {
-	// if c.Owner == "" {
-	// 	return errors.New("missing `owner' value")
-	// }
+	if c.Owner == "" {
+		return errors.New("missing `owner' value")
+	}
 
 	if c.DatabasePath == "" {
 		return errors.New("missing `database_path' value")
@@ -85,8 +87,6 @@ func (c *Config) Validate() error {
 type Database struct {
 	*sqlx.DB
 	Config Config
-
-	sf *snowflake.Node
 }
 
 func NewDatabase(config Config) (*Database, error) {
@@ -99,12 +99,7 @@ func NewDatabase(config Config) (*Database, error) {
 		return nil, errors.Wrap(err, "Failed to open sqlite3 db")
 	}
 
-	s, err := snowflake.NewNode(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed ")
-	}
-
-	db := &Database{d, config, s}
+	db := &Database{d, config}
 
 	v, err := db.userVersion()
 	if err != nil {
@@ -117,7 +112,7 @@ func NewDatabase(config Config) (*Database, error) {
 	}
 
 	// Start a transaction because yadda yadda speed.
-	tx, err := db.Begin()
+	tx, err := db.DB.Begin()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to start a transaction for migrations")
 	}
@@ -150,10 +145,6 @@ func (d *Database) Close() error {
 	return d.DB.Close()
 }
 
-func (d *Database) rowx(v interface{}, q string, args ...interface{}) error {
-	return d.QueryRowx(q, args...).Scan(v)
-}
-
 func (d *Database) userVersion() (int, error) {
 	var version int
 	return version, d.QueryRow("PRAGMA user_version").Scan(&version)
@@ -162,4 +153,87 @@ func (d *Database) userVersion() (int, error) {
 func (d *Database) setUserVersion(tx *sql.Tx, v int) error {
 	_, err := tx.Exec(fmt.Sprintf("PRAGMA user_version = %d", v))
 	return err
+}
+
+// createOwner is an internal function.
+func (d *Database) createOwner(password string) error {
+	u, err := NewUser(d.Config.Owner, password, PermissionOwner)
+	if err != nil {
+		return err
+	}
+
+	tx, err := d.DB.BeginTx(context.Background(), nil)
+	if err != nil {
+		return errors.Wrap(err, "Failed to begin transaction")
+	}
+	defer tx.Rollback()
+
+	if err := u.insert(tx); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// Transaction acquires a transaction lock in SQLite. This bugs me so much. Why
+// did I do this? I guess you could say that it boils down to not having any
+// data race at all. But think about this scenario: if 2 viewers access the
+// webpage within the same millisecond, then one would have to wait a few
+// additional milliseconds. This BUGS ME!!!! WHY!!!! WHY DID I DO THIS?!
+type Transaction struct {
+	*sqlx.Tx
+
+	// As we acquire an entire transaction, it is safe to store our own local
+	// session state as long as we keep it up to date on our own calls.
+	session *Session
+	config  Config
+}
+
+func (d *Database) begin(ctx context.Context, session string) (*Transaction, error) {
+	tx, err := d.DB.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify session.
+	s := &Session{AuthToken: session}
+	if err := s.scan(tx, d.Config.tokenLifespan); err != nil {
+		return nil, err
+	}
+
+	return &Transaction{
+		Tx:      tx,
+		session: s,
+		config:  d.Config,
+	}, nil
+}
+
+type TxHandler = func(*Transaction) error
+
+func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) error {
+	t, err := d.begin(ctx, session)
+	if err != nil {
+		return errors.Wrap(err, "Failed to begin transaction")
+	}
+	defer t.Rollback()
+
+	if err := fn(t); err != nil {
+		return err
+	}
+
+	return t.Commit()
+}
+
+func errIsConstraint(err error) bool {
+	if err != nil {
+		sqlerr := sqlite3.Error{}
+
+		// Unique constraint means we're attempting to make a username that's
+		// colliding. We could return an error close to that.
+		if errors.As(err, &sqlerr) && sqlerr.Code == sqlite3.ErrConstraint {
+			return true
+		}
+	}
+
+	return false
 }

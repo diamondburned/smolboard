@@ -14,9 +14,25 @@ type Token struct {
 	Remaining int    `db:"remaining"`
 }
 
-var ErrUnknownToken = httperr.New(401, "unknown token")
+var (
+	ErrUnknownToken = httperr.New(401, "unknown token")
+	ErrOverUseLimit = httperr.New(400, "requested use is over limit")
+)
 
-func (d *Database) CreateToken(uses int) (*Token, error) {
+func (d *Transaction) CreateToken(uses int) (*Token, error) {
+	// Is the user going over the max use limit? If yes, disallow it.
+	if uses > d.config.MaxTokenUses {
+		return nil, ErrOverUseLimit
+	}
+
+	// Is the user requesting for an unlimited use token?
+	if uses == -1 {
+		// Check permission.
+		if err := d.HasPermission(PermissionOwner, true); err != nil {
+			return nil, err
+		}
+	}
+
 	// Generate a short random string.
 	var r = make([]byte, 16)
 	if _, err := rand.Read(r); err != nil {
@@ -38,19 +54,15 @@ func (d *Database) CreateToken(uses int) (*Token, error) {
 
 // UseToken returns an error if a token is not found, otherwise it decrements 1
 // from the remaining key and return nil.
-func (d *Database) UseToken(token string) error {
-	// We need to start a transaction to avoid data race.
-	tx, err := d.Beginx()
-	if err != nil {
-		return errors.Wrap(err, "Failed to start a transaction")
-	}
-	defer tx.Rollback()
+func (d *Transaction) UseToken(token string) error {
+	return useToken(d.Tx.Tx, token)
+}
 
+func useToken(tx *sql.Tx, token string) error {
 	// See if we have the token.
-
 	var remaining int
 
-	err = d.
+	err := tx.
 		QueryRow("SELECT remaining FROM tokens WHERE token = ?", token).
 		Scan(&remaining)
 
@@ -70,7 +82,7 @@ func (d *Database) UseToken(token string) error {
 
 	// Consume SQL style. This query subtracts 1 from the current token then
 	// deletes all tokens with remaining equals to 0.
-	_, err = d.Exec(`
+	_, err = tx.Exec(`
 		UPDATE tokens SET remaining = remaining - 1 WHERE token = ?;
 		DELETE FROM tokens WHERE remaining == 0`,
 		token,
@@ -80,5 +92,5 @@ func (d *Database) UseToken(token string) error {
 		return errors.Wrap(err, "Failed to clean up tokens")
 	}
 
-	return tx.Commit()
+	return nil
 }

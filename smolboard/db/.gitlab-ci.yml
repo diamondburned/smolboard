@@ -1,0 +1,34 @@
+{
+    "image": "golang:alpine",
+    "variables": {
+        "COV": "/tmp/cov_results",
+    },
+    "before_script": [
+        "apk add git"
+    ],
+    "stages": [
+        "build",
+        "test"
+    ],
+    "build_test": {
+        "stage": "build",
+        "script": [
+            "go build ./..."
+        ]
+    },
+    "unit_test": {
+        "stage": "test",
+        "timeout": "5m",
+        "script": [
+            "go test -v -coverprofile $COV ./...",
+            "go tool cover -func $COV"
+        ]
+    },
+    "race_test": {
+        "stage": "test",
+        "timeout": "15m",
+        "script": [
+            "go test -race ./...",
+        ]
+    }
+}

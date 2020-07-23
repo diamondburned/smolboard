@@ -4,7 +4,8 @@
         "COV": "/tmp/cov_results",
     },
     "before_script": [
-        "apk add git"
+        "apk add git",
+        "apk add gcc musl-dev" # for sqlite3
     ],
     "stages": [
         "build",

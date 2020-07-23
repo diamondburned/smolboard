@@ -43,7 +43,7 @@ func newTestDatabase(t *testing.T) *Database {
 	return d
 }
 
-func testNewOwnerToken(t *testing.T, db *Database, user, pass string) string {
+func testNewOwner(t *testing.T, db *Database, user, pass string) *Session {
 	t.Helper()
 
 	db.Config.Owner = user
@@ -57,7 +57,7 @@ func testNewOwnerToken(t *testing.T, db *Database, user, pass string) string {
 		t.Fatal("Failed to sign in:", err)
 	}
 
-	return k.AuthToken
+	return k
 }
 
 func testBeginTx(t *testing.T, db *Database, token string) *Transaction {

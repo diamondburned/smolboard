@@ -45,31 +45,22 @@ func NewSession(username, userAgent string, ttl time.Duration) (*Session, error)
 	}, nil
 }
 
-func (s *Session) insert(tx *sql.Tx) error {
-	_, err := tx.Exec(
-		"INSERT INTO sessions VALUES (?, ?, ?, ?, ?)",
-		s.ID, s.Username, s.AuthToken, s.Deadline, s.UserAgent,
-	)
+// QuerySession searches for a session..
+func QuerySession(tx *sqlx.Tx, token string, renewTTL time.Duration) (*Session, error) {
+	var s Session
 
-	if err != nil {
-		return errors.Wrap(err, "Failed to save session")
-	}
-
-	return nil
-}
-
-// scan fills Session using s.AuthToken.
-func (s *Session) scan(tx *sqlx.Tx, renewTTL time.Duration) error {
 	err := tx.
-		QueryRowx("SELECT * FROM sessions WHERE authtoken = ?", s.AuthToken).
-		StructScan(s)
+		QueryRowx("SELECT * FROM sessions WHERE authtoken = ?", token).
+		StructScan(&s)
 
 	if err != nil {
+		// Treat session not found errors as expired to make them the same as
+		// actual expired (and deleted) tokens.
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrSessionNotFound
+			return nil, ErrSessionExpired
 		}
 
-		return errors.Wrap(err, "Failed to scan session")
+		return nil, errors.Wrap(err, "Failed to scan session")
 	}
 
 	var now = time.Now()
@@ -77,7 +68,7 @@ func (s *Session) scan(tx *sqlx.Tx, renewTTL time.Duration) error {
 	// If the token is expired, then (try to) delete it and return the expired
 	// error.
 	if now.UnixNano() > s.Deadline {
-		return ErrSessionExpired
+		return nil, ErrSessionExpired
 	}
 
 	// Bump up the expiration time.
@@ -90,10 +81,38 @@ func (s *Session) scan(tx *sqlx.Tx, renewTTL time.Duration) error {
 	)
 
 	if err != nil {
-		return errors.Wrap(err, "Failed to renew token")
+		return nil, errors.Wrap(err, "Failed to renew token")
 	}
 
-	return err
+	return &s, nil
+}
+
+func (s *Session) insert(tx *sql.Tx) error {
+	_, err := tx.Exec(
+		"INSERT INTO sessions VALUES (?, ?, ?, ?, ?)",
+		s.ID, s.Username, s.AuthToken, s.Deadline, s.UserAgent,
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "Failed to save session")
+	}
+
+	// Execute cleanup of expired sessions.
+	return cleanupSession(tx, time.Now().UnixNano())
+}
+
+func cleanupSession(tx *sql.Tx, now int64) error {
+	// Execute cleanup of expired sessions.
+	_, err := tx.Exec(
+		"DELETE FROM sessions WHERE deadline < ?",
+		time.Now().UnixNano(),
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "Faield to cleanup expired sessions")
+	}
+
+	return nil
 }
 
 // Signin creates a new session using the given username and password. The
@@ -168,7 +187,16 @@ func (d *Database) Signup(ctx context.Context, user, pass, token, UA string) (*S
 }
 
 func (d *Transaction) Signout() error {
-	_, err := d.Exec("DELETE FROM sessions WHERE authtoken = ?", d.session.AuthToken)
+	c, err := d.execChanged(
+		"DELETE FROM sessions WHERE authtoken = ?",
+		d.session.AuthToken,
+	)
+	if err != nil {
+		return errors.Wrap(err, "Failed to delete token")
+	}
+	if !c {
+		return ErrSessionNotFound
+	}
 	return err
 }
 
@@ -200,25 +228,17 @@ func (d *Transaction) Sessions() ([]Session, error) {
 // DeleteSessionID deletes the person's own session ID.
 func (d *Transaction) DeleteSessionID(id int64) error {
 	// Ensure that we are deleting only this user's token.
-	_, err := d.Exec(
+	c, err := d.execChanged(
 		"DELETE FROM sessions WHERE id = ? AND username = ?",
 		id, d.session.Username,
 	)
-
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrSessionNotFound
-		}
-
-		return errors.Wrap(err, "Failed to delete token")
+		return errors.Wrap(err, "Failed to delete token with ID")
 	}
-
+	if !c {
+		return ErrSessionNotFound
+	}
 	return nil
-}
-
-func (d *Transaction) CleanupSessions(now int64) error {
-	_, err := d.Exec("DELETE FROM sessions WHERE deadline < ?", now)
-	return err
 }
 
 func randToken() (string, error) {

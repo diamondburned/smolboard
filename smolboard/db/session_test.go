@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -13,8 +14,9 @@ func TestSession(t *testing.T) {
 
 	t.Log("Created database. Hashing owner password...")
 
-	// Password hashing takes dummy long.
-	ownerToken := testNewOwnerToken(t, d, "ひめありかわ", "goodpassword")
+	// Password hashing takes dummy long with the race detector.
+	owner := testNewOwner(t, d, "ひめありかわ", "goodpassword")
+	ownerToken := owner.AuthToken
 	t.Log("Made owner token:", ownerToken)
 
 	token := testOneTimeToken(t, d, ownerToken)
@@ -92,7 +94,88 @@ func TestSession(t *testing.T) {
 
 	// Try and start a session with a signed out token.
 	_, err = d.begin(context.Background(), n.AuthToken)
-	if !errors.Is(err, ErrSessionNotFound) {
+	if !errors.Is(err, ErrSessionExpired) {
 		t.Fatal("Unexpected error looking for deleted session:", err)
+	}
+}
+
+func TestSessionDelete(t *testing.T) {
+	d := newTestDatabase(t)
+
+	owner := testNewOwner(t, d, "ひめありかわ", "goodpassword")
+
+	tx := testBeginTx(t, d, owner.AuthToken)
+
+	if err := tx.DeleteSessionID(owner.ID); err != nil {
+		t.Fatal("Failed to delete owner's session:", err)
+	}
+}
+
+func TestSessionSignout(t *testing.T) {
+	d := newTestDatabase(t)
+
+	owner := testNewOwner(t, d, "ひめありかわ", "goodpassword")
+
+	tx := testBeginTx(t, d, owner.AuthToken)
+
+	if err := tx.Signout(); err != nil {
+		t.Fatal("Failed to sign out:", err)
+	}
+
+	// Re-signout.
+	if err := tx.Signout(); !errors.Is(err, ErrSessionNotFound) {
+		t.Fatal("Unexpected error signing out of signed out session:", err)
+	}
+}
+
+func TestSessionExpiry(t *testing.T) {
+	d := newTestDatabase(t)
+
+	owner := testNewOwner(t, d, "ひめありかわ", "goodpassword")
+
+	tx := testBeginTx(t, d, owner.AuthToken)
+
+	ex := 5 * time.Millisecond
+
+	s, err := NewSession("ひめありかわ", "A", ex)
+	if err != nil {
+		t.Fatal("Failed to create session:", err)
+	}
+
+	if err := s.insert(tx.Tx.Tx); err != nil {
+		t.Fatal("Failed to insert session:", err)
+	}
+
+	// Wait for session to expire.
+	<-time.After(ex)
+
+	// Query.
+	_, err = QuerySession(tx.Tx, s.AuthToken, time.Hour)
+	if !errors.Is(err, ErrSessionExpired) {
+		t.Fatal("Unexpected error querying expired session:", err)
+	}
+
+	// Cleanup.
+	if err := cleanupSession(tx.Tx.Tx, time.Now().UnixNano()); err != nil {
+		t.Fatal("Failed to cleanup session:", err)
+	}
+
+	// Check.
+	_, err = QuerySession(tx.Tx, s.AuthToken, time.Hour)
+	if !errors.Is(err, ErrSessionExpired) {
+		t.Fatal("Unexpected error querying expired session:", err)
+	}
+
+	// Check manually.
+	err = tx.
+		QueryRow("SELECT id FROM sessions WHERE id = ?", s.ID).
+		Scan(new(int64))
+	if !errors.Is(err, sql.ErrNoRows) {
+		t.Fatal("Session still found post-cleanup:", err)
+	}
+
+	// Try deleting.
+	if err := tx.DeleteSessionID(s.ID); !errors.Is(err, ErrSessionNotFound) {
+		t.Fatal("Unexpected error while deleting expired session:", err)
 	}
 }

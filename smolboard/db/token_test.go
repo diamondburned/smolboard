@@ -9,10 +9,12 @@ import (
 func TestToken(t *testing.T) {
 	d := newTestDatabase(t)
 
-	token := testNewOwnerToken(t, d, "ひめありかわ", "goodpassword")
-	tx := testBeginTx(t, d, token)
+	owner := testNewOwner(t, d, "ひめありかわ", "goodpassword")
+	token := owner.AuthToken
 
 	t.Run("UnlimitedUse", func(t *testing.T) {
+		tx := testBeginTx(t, d, token)
+
 		// Create an unlimited use token.
 		k, err := tx.CreateToken(-1)
 		if err != nil {
@@ -28,6 +30,8 @@ func TestToken(t *testing.T) {
 	})
 
 	t.Run("OneTimer", func(t *testing.T) {
+		tx := testBeginTx(t, d, token)
+
 		// Create a one-timer token.
 		k, err := tx.CreateToken(1)
 		if err != nil {
@@ -44,4 +48,22 @@ func TestToken(t *testing.T) {
 			t.Fatal("Unexpected error after token expiry")
 		}
 	})
+
+	for perm, test := range testPermissionSet {
+		// Skip owner.
+		if perm == PermissionOwner {
+			continue
+		}
+
+		t.Run(perm.String(), func(t *testing.T) {
+			s := test.begin(t, d, owner)
+
+			tx := testBeginTx(t, d, s.AuthToken)
+
+			_, err := tx.CreateToken(-1)
+			if !errors.Is(err, ErrActionNotPermitted) {
+				t.Fatal("Unexpected error creating token as normal user:", err)
+			}
+		})
+	}
 }

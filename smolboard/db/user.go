@@ -142,7 +142,14 @@ func (d *Transaction) PromoteUser(username string, p Permission) error {
 func (d *Transaction) DeleteUser(username string) error {
 	// Make sure the user performing this action is either the user being
 	// deleted or an administrator.
-	if err := d.HasPermOrIsUser(PermissionAdministrator, username, true); err != nil {
+	// Behavior:
+	//    Current Admin, target Trusted -> delete
+	//    Current Admin, target Admin   -> no
+	//    Current Admin, target is self and Admin -> delete
+	//    Current Trusted, target user -> no
+	//    Current Trusted, target Trusted -> no
+	//    Current Trusted, target is self and Trusted -> delete
+	if err := d.IsUserOrHasPermOver(PermissionAdministrator, username); err != nil {
 		return err
 	}
 

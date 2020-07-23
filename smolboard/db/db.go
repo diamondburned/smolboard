@@ -30,23 +30,25 @@ var migrations = []string{`
 		username TEXT REFERENCES users(username)
 			ON UPDATE CASCADE
 			ON DELETE CASCADE,
-		authtoken TEXT    NOT NULL,
+		authtoken TEXT    NOT NULL UNIQUE,
 		deadline  INTEGER NOT NULL, -- unixnano
 		useragent TEXT    NOT NULL
 	);
 
 	CREATE TABLE posts (
 		id     INTEGER PRIMARY KEY, -- Snowflake
-		poster INTEGER REFERENCES users(username)
+		poster TEXT REFERENCES users(username)
 			ON UPDATE CASCADE
 			ON DELETE SET NULL,
 		contenttype TEXT    NOT NULL,
-		permission  INTEGER NOT NULL -- canAccess := users(perm) >= posts(perm)
+		permission  INTEGER NOT NULL
 	);
 
 	CREATE TABLE posttags (
 		postid  INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
-		tagname TEXT    NOT NULL
+		tagname TEXT    NOT NULL,
+		-- Prevent multiple of the same tags from appearing in one post.
+		UNIQUE (postid, tagname)
 	);
 `}
 
@@ -100,6 +102,11 @@ func NewDatabase(config Config) (*Database, error) {
 	}
 
 	db := &Database{d, config}
+
+	// Enable foreign key constraints.
+	if err := db.enableFK(); err != nil {
+		return nil, errors.Wrap(err, "Failed to enable foreign key constraints")
+	}
 
 	v, err := db.userVersion()
 	if err != nil {
@@ -155,6 +162,11 @@ func (d *Database) setUserVersion(tx *sql.Tx, v int) error {
 	return err
 }
 
+func (d *Database) enableFK() error {
+	_, err := d.Exec("PRAGMA foreign_keys = ON")
+	return err
+}
+
 // createOwner is an internal function.
 func (d *Database) createOwner(password string) error {
 	u, err := NewUser(d.Config.Owner, password, PermissionOwner)
@@ -196,8 +208,8 @@ func (d *Database) begin(ctx context.Context, session string) (*Transaction, err
 	}
 
 	// Verify session.
-	s := &Session{AuthToken: session}
-	if err := s.scan(tx, d.Config.tokenLifespan); err != nil {
+	s, err := QuerySession(tx, session, d.Config.tokenLifespan)
+	if err != nil {
 		return nil, err
 	}
 
@@ -236,4 +248,24 @@ func errIsConstraint(err error) bool {
 	}
 
 	return false
+}
+
+func (d *Transaction) execChanged(exec string, v ...interface{}) (bool, error) {
+	return execChanged(d.Tx.Tx, exec, v...)
+}
+
+// execChanged returns false if no rows were affected.
+func execChanged(tx *sql.Tx, exec string, v ...interface{}) (bool, error) {
+	// Ensure that we are deleting only this user's token.
+	r, err := tx.Exec(exec, v...)
+	if err != nil {
+		return false, errors.Wrap(err, "Failed to delete token")
+	}
+
+	count, err := r.RowsAffected()
+	if err != nil {
+		return false, errors.Wrap(err, "Failed to get rows affected")
+	}
+
+	return count > 0, nil
 }

@@ -21,7 +21,10 @@ var migrations = []string{`
 	);
 
 	CREATE TABLE tokens (
-		token     TEXT    NOT NULL,
+		token   TEXT NOT NULL,
+		creator TEXT NOT NULL REFERENCES users(username)
+			ON UPDATE CASCADE
+			ON DELETE CASCADE,
 		remaining INTEGER NOT NULL -- (-1) for unlimited, owner only
 	);
 
@@ -41,7 +44,8 @@ var migrations = []string{`
 			ON UPDATE CASCADE
 			ON DELETE SET NULL,
 		contenttype TEXT    NOT NULL,
-		permission  INTEGER NOT NULL
+		permission  INTEGER NOT NULL,
+		blurhash    TEXT    NOT NULL
 	);
 
 	CREATE TABLE posttags (
@@ -52,29 +56,29 @@ var migrations = []string{`
 	);
 `}
 
-type Config struct {
-	Owner         string `ini:"owner"`
-	DatabasePath  string `ini:"database_path"`
-	MaxTokenUses  int    `ini:"max_token_uses"`
-	TokenLifespan string `ini:"token_lifespan"`
+type DBConfig struct {
+	Owner         string `toml:"owner"`
+	DatabasePath  string `toml:"databasePath"`
+	MaxTokenUses  int    `toml:"maxTokenUses"`
+	TokenLifespan string `toml:"tokenLifespan"`
 
 	tokenLifespan time.Duration
 }
 
-func NewConfig() Config {
-	return Config{
+func NewConfig() DBConfig {
+	return DBConfig{
 		MaxTokenUses:  100,
 		TokenLifespan: "1h",
 	}
 }
 
-func (c *Config) Validate() error {
+func (c *DBConfig) Validate() error {
 	if c.Owner == "" {
 		return errors.New("missing `owner' value")
 	}
 
 	if c.DatabasePath == "" {
-		return errors.New("missing `database_path' value")
+		return errors.New("missing `databasePath' value")
 	}
 
 	d, err := time.ParseDuration(c.TokenLifespan)
@@ -88,10 +92,10 @@ func (c *Config) Validate() error {
 
 type Database struct {
 	*sqlx.DB
-	Config Config
+	Config DBConfig
 }
 
-func NewDatabase(config Config) (*Database, error) {
+func NewDatabase(config DBConfig) (*Database, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
@@ -169,22 +173,9 @@ func (d *Database) enableFK() error {
 
 // createOwner is an internal function.
 func (d *Database) createOwner(password string) error {
-	u, err := NewUser(d.Config.Owner, password, PermissionOwner)
-	if err != nil {
-		return err
-	}
-
-	tx, err := d.DB.BeginTx(context.Background(), nil)
-	if err != nil {
-		return errors.Wrap(err, "Failed to begin transaction")
-	}
-	defer tx.Rollback()
-
-	if err := u.insert(tx); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return d.AcquireGuest(context.Background(), func(tx *Transaction) error {
+		return tx.createUser(d.Config.Owner, password, PermissionOwner)
+	})
 }
 
 // Transaction acquires a transaction lock in SQLite. This bugs me so much. Why
@@ -197,27 +188,29 @@ type Transaction struct {
 
 	// As we acquire an entire transaction, it is safe to store our own local
 	// session state as long as we keep it up to date on our own calls.
-	session *Session
-	config  Config
+	Session Session
+	config  DBConfig
 }
 
 func (d *Database) begin(ctx context.Context, session string) (*Transaction, error) {
-	tx, err := d.DB.BeginTxx(ctx, nil)
+	t, err := d.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	tx := &Transaction{
+		Tx:     t,
+		config: d.Config,
 	}
 
 	// Verify session.
-	s, err := QuerySession(tx, session, d.Config.tokenLifespan)
+	s, err := tx.querySession(session)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Transaction{
-		Tx:      tx,
-		session: s,
-		config:  d.Config,
-	}, nil
+	tx.Session = *s
+	return tx, nil
 }
 
 type TxHandler = func(*Transaction) error
@@ -234,6 +227,29 @@ func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) er
 	}
 
 	return t.Commit()
+}
+
+var readOnlyOpts = &sql.TxOptions{
+	ReadOnly: true,
+}
+
+func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {
+	t, err := d.DB.BeginTxx(ctx, readOnlyOpts)
+	if err != nil {
+		return errors.Wrap(err, "Failed to begin transaction")
+	}
+	defer t.Rollback()
+
+	tx := &Transaction{
+		Tx:     t,
+		config: d.Config,
+	}
+
+	if err := fn(tx); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func errIsConstraint(err error) bool {

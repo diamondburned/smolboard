@@ -1,35 +1,55 @@
-package starboard
+package smolboard
 
 import (
 	"github.com/diamondburned/smolboard/smolboard/db"
-	"github.com/go-chi/chi"
+	"github.com/diamondburned/smolboard/smolboard/http"
 	"github.com/pkg/errors"
 )
 
 // Config is the global application config.
 type Config struct {
-	HTTPAddr string `ini:"http_address"`
-	db.Config
+	db.DBConfig
+	http.HTTPConfig
 }
 
 func NewConfig() Config {
 	return Config{
-		Config: db.NewConfig(),
+		DBConfig:   db.NewConfig(),
+		HTTPConfig: http.NewConfig(),
 	}
+}
+
+// Validator is used for configs.
+type Validator interface {
+	Validate() error
 }
 
 func (c *Config) Validate() error {
-	if c.HTTPAddr == "" {
-		c.HTTPAddr = ":0"
+	var fields = []Validator{
+		&c.DBConfig,
+		&c.HTTPConfig,
 	}
 
-	return c.Config.Validate()
+	for _, v := range fields {
+		if err := v.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type App struct {
-	*chi.Mux // go-chi gang go-chi gang
+	*http.Routes
+	Database *db.Database
+}
 
-	store *db.Database
+func ListenAndServe(config Config) error {
+	a, err := New(config)
+	if err != nil {
+		return err
+	}
+
+	return a.ListenAndServe()
 }
 
 func New(config Config) (*App, error) {
@@ -37,14 +57,19 @@ func New(config Config) (*App, error) {
 		return nil, err
 	}
 
-	s, err := db.NewDatabase(config.Config)
+	d, err := db.NewDatabase(config.DBConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create database")
 	}
 
+	h, err := http.New(d, config.HTTPConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to create HTTP")
+	}
+
 	app := &App{
-		Mux:   chi.NewMux(),
-		store: s,
+		Routes:   h,
+		Database: d,
 	}
 
 	return app, nil

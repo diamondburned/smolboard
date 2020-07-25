@@ -1,27 +1,25 @@
 package db
 
 import (
-	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
 	"time"
 
-	"github.com/diamondburned/smolboard/utils/httperr"
-	"github.com/jmoiron/sqlx"
+	"github.com/diamondburned/smolboard/smolboard/httperr"
 	"github.com/pkg/errors"
 )
 
 type Session struct {
-	ID       int64  `db:"id"`
-	Username string `db:"username"`
+	ID       int64  `json:"-" db:"id"`
+	Username string `json:"-" db:"username"`
 	// AuthToken is the token stored in the cookies.
-	AuthToken string `db:"authtoken"`
+	AuthToken string `json:"authtoken" db:"authtoken"`
 	// Deadline is gradually updated with each Session call, which is per
 	// request.
-	Deadline int64 `db:"deadline"`
+	Deadline int64 `json:"deadline" db:"deadline"`
 	// UserAgent is obtained once on login.
-	UserAgent string `db:"useragent"`
+	UserAgent string `json:"-" db:"useragent"`
 }
 
 var (
@@ -29,27 +27,16 @@ var (
 	ErrSessionExpired  = httperr.New(410, "session expired")
 )
 
-// NewSession creates a new session.
-func NewSession(username, userAgent string, ttl time.Duration) (*Session, error) {
-	t, err := randToken()
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to generate a token")
-	}
-
-	return &Session{
-		ID:        int64(sessionIDGen.Generate()),
-		Username:  username,
-		AuthToken: t,
-		Deadline:  time.Now().Add(ttl).UnixNano(),
-		UserAgent: userAgent,
-	}, nil
+// IsZero returns true if the session is a guest one.
+func (s Session) IsZero() bool {
+	return s.ID == 0
 }
 
-// QuerySession searches for a session..
-func QuerySession(tx *sqlx.Tx, token string, renewTTL time.Duration) (*Session, error) {
+// querySession searches for a session..
+func (d *Transaction) querySession(token string) (*Session, error) {
 	var s Session
 
-	err := tx.
+	err := d.
 		QueryRowx("SELECT * FROM sessions WHERE authtoken = ?", token).
 		StructScan(&s)
 
@@ -72,10 +59,10 @@ func QuerySession(tx *sqlx.Tx, token string, renewTTL time.Duration) (*Session, 
 	}
 
 	// Bump up the expiration time.
-	now = now.Add(renewTTL)
+	now = now.Add(d.config.tokenLifespan)
 	s.Deadline = now.UnixNano()
 
-	_, err = tx.Exec(
+	_, err = d.Exec(
 		"UPDATE sessions SET deadline = ? WHERE authtoken = ?",
 		s.Deadline, s.AuthToken,
 	)
@@ -87,23 +74,9 @@ func QuerySession(tx *sqlx.Tx, token string, renewTTL time.Duration) (*Session, 
 	return &s, nil
 }
 
-func (s *Session) insert(tx *sql.Tx) error {
-	_, err := tx.Exec(
-		"INSERT INTO sessions VALUES (?, ?, ?, ?, ?)",
-		s.ID, s.Username, s.AuthToken, s.Deadline, s.UserAgent,
-	)
-
-	if err != nil {
-		return errors.Wrap(err, "Failed to save session")
-	}
-
+func (d *Transaction) cleanupSession(now int64) error {
 	// Execute cleanup of expired sessions.
-	return cleanupSession(tx, time.Now().UnixNano())
-}
-
-func cleanupSession(tx *sql.Tx, now int64) error {
-	// Execute cleanup of expired sessions.
-	_, err := tx.Exec(
+	_, err := d.Exec(
 		"DELETE FROM sessions WHERE deadline < ?",
 		time.Now().UnixNano(),
 	)
@@ -115,17 +88,40 @@ func cleanupSession(tx *sql.Tx, now int64) error {
 	return nil
 }
 
+func (d *Transaction) newSession(username, userAgent string) (*Session, error) {
+	t, err := randToken()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to generate a token")
+	}
+
+	var now = time.Now()
+
+	s := &Session{
+		ID:        int64(sessionIDGen.Generate()),
+		Username:  username,
+		AuthToken: t,
+		Deadline:  now.Add(d.config.tokenLifespan).UnixNano(),
+		UserAgent: userAgent,
+	}
+
+	_, err = d.Exec(
+		"INSERT INTO sessions VALUES (?, ?, ?, ?, ?)",
+		s.ID, s.Username, s.AuthToken, s.Deadline, s.UserAgent,
+	)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to save session")
+	}
+
+	// Execute cleanup of expired sessions.
+	return s, d.cleanupSession(now.UnixNano())
+}
+
 // Signin creates a new session using the given username and password. The
 // UserAgent will be used for listing sessions. This function returns an
 // authenticate token.
-func (d *Database) Signin(ctx context.Context, user, pass, UA string) (*Session, error) {
-	t, err := d.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to begin transaction")
-	}
-	defer t.Rollback()
-
-	r := t.QueryRow("SELECT passhash FROM users WHERE username = ?", user)
+func (d *Transaction) Signin(user, pass, UA string) (*Session, error) {
+	r := d.QueryRow("SELECT passhash FROM users WHERE username = ?", user)
 
 	var passhash []byte
 	if err := r.Scan(&passhash); err != nil {
@@ -141,55 +137,26 @@ func (d *Database) Signin(ctx context.Context, user, pass, UA string) (*Session,
 		return nil, err
 	}
 
-	s, err := NewSession(user, UA, d.Config.tokenLifespan)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.insert(t); err != nil {
-		return nil, err
-	}
-
-	return s, t.Commit()
+	return d.newSession(user, UA)
 }
 
-func (d *Database) Signup(ctx context.Context, user, pass, token, UA string) (*Session, error) {
-	t, err := d.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to begin transaction")
-	}
-	defer t.Rollback()
-
+func (d *Transaction) Signup(user, pass, token, UA string) (*Session, error) {
 	// Verify the token.
-	if err := useToken(t, token); err != nil {
+	if err := d.useToken(token); err != nil {
 		return nil, err
 	}
 
-	u, err := NewUser(user, pass, PermissionNormal)
-	if err != nil {
+	if err := d.createUser(user, pass, PermissionNormal); err != nil {
 		return nil, err
 	}
 
-	if err := u.insert(t); err != nil {
-		return nil, err
-	}
-
-	s, err := NewSession(user, UA, d.Config.tokenLifespan)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := s.insert(t); err != nil {
-		return nil, err
-	}
-
-	return s, t.Commit()
+	return d.newSession(user, UA)
 }
 
 func (d *Transaction) Signout() error {
 	c, err := d.execChanged(
 		"DELETE FROM sessions WHERE authtoken = ?",
-		d.session.AuthToken,
+		d.Session.AuthToken,
 	)
 	if err != nil {
 		return errors.Wrap(err, "Failed to delete token")
@@ -200,15 +167,13 @@ func (d *Transaction) Signout() error {
 	return err
 }
 
-func (d *Transaction) Session() Session {
-	return *d.session
-}
-
 func (d *Transaction) Sessions() ([]Session, error) {
-	r, err := d.Queryx("SELECT * FROM sessions WHERE username = ?", d.session.Username)
+	r, err := d.Queryx("SELECT * FROM sessions WHERE username = ?", d.Session.Username)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to query for sessions")
 	}
+
+	defer r.Close()
 
 	var sessions []Session
 
@@ -230,7 +195,7 @@ func (d *Transaction) DeleteSessionID(id int64) error {
 	// Ensure that we are deleting only this user's token.
 	c, err := d.execChanged(
 		"DELETE FROM sessions WHERE id = ? AND username = ?",
-		id, d.session.Username,
+		id, d.Session.Username,
 	)
 	if err != nil {
 		return errors.Wrap(err, "Failed to delete token with ID")

@@ -48,20 +48,26 @@ func newTestUser(t *testing.T, d *Database, ownerToken, name string, p Permissio
 
 	token := testOneTimeToken(t, d, ownerToken)
 
-	u, err := d.Signup(context.TODO(), name, "password", token, "A")
+	var s *Session
+
+	err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+		s, err = tx.Signup(name, "password", token, "iOS")
+		return
+	})
+
 	if err != nil {
 		t.Fatal("Failed to create normal user:", err)
 	}
 
 	err = d.Acquire(context.TODO(), ownerToken, func(tx *Transaction) error {
-		return tx.PromoteUser(u.Username, p)
+		return tx.PromoteUser(s.Username, p)
 	})
 
 	if err != nil {
 		t.Fatal("Failed to promote user:", err)
 	}
 
-	return u
+	return s
 }
 
 var testPermissionSet = map[Permission]permTest{

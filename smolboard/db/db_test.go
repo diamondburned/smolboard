@@ -52,12 +52,18 @@ func testNewOwner(t *testing.T, db *Database, user, pass string) *Session {
 		t.Fatal("Failed to make owner user:", err)
 	}
 
-	k, err := db.Signin(context.Background(), user, pass, "GoTest")
+	var s *Session
+
+	err := db.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+		s, err = tx.Signin(user, pass, "iOS")
+		return
+	})
+
 	if err != nil {
 		t.Fatal("Failed to sign in:", err)
 	}
 
-	return k
+	return s
 }
 
 func testBeginTx(t *testing.T, db *Database, token string) *Transaction {
@@ -83,17 +89,14 @@ func testBeginTx(t *testing.T, db *Database, token string) *Transaction {
 func testOneTimeToken(t *testing.T, db *Database, token string) string {
 	t.Helper()
 
-	tx, err := db.begin(context.Background(), token)
+	var k string
+	err := db.Acquire(context.Background(), token, func(tx *Transaction) error {
+		k = testMustOneTimeToken(t, tx)
+		return nil
+	})
+
 	if err != nil {
 		t.Fatal("Failed to begin transaction:", err)
-	}
-	defer tx.Rollback()
-
-	// We need a token.
-	k := testMustOneTimeToken(t, tx)
-
-	if err := tx.Commit(); err != nil {
-		t.Fatal("Failed to commit:", err)
 	}
 
 	return k

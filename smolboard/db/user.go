@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/diamondburned/smolboard/utils/httperr"
+	"github.com/diamondburned/smolboard/smolboard/httperr"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -49,33 +49,24 @@ func VerifyPassword(hash []byte, password string) error {
 	return errors.Wrap(err, "Failed to compare password")
 }
 
-func NewUser(username, password string, perm Permission) (*User, error) {
+// createUser creates a new user in the database with the given username. The
+// username that's inserted into the database is guaranteed to be the same as
+// the argument.
+func (d *Transaction) createUser(username, password string, perm Permission) error {
 	if !nameAllowed(username) {
-		return nil, ErrIllegalName
+		return ErrIllegalName
 	}
 
 	if len(password) < MinimumPassLength {
-		return nil, ErrPasswordTooShort
+		return ErrPasswordTooShort
 	}
 
 	p, err := bcrypt.GenerateFromPassword([]byte(password), HashCost)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to generate password")
+		return errors.Wrap(err, "Failed to generate password")
 	}
 
-	return &User{
-		UserPart: UserPart{username, perm},
-		Passhash: p,
-	}, nil
-}
-
-func (u *User) insert(tx *sql.Tx) error {
-	_, err := tx.Exec(
-		"INSERT INTO users VALUES (?, ?, ?)",
-		u.Username, u.Passhash, u.Permission,
-	)
-
-	// Do the magical Go way of asserting errors.
+	_, err = d.Exec("INSERT INTO users VALUES (?, ?, ?)", username, p, perm)
 	if err != nil {
 		// Unique constraint means we're attempting to make a username that's
 		// colliding. We could return an error close to that.

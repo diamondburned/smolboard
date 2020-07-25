@@ -11,29 +11,11 @@ import (
 )
 
 func TestPostNew(t *testing.T) {
-	p, err := NewEmptyPost("image/png")
-	if err != nil {
-		t.Fatal("Failed to make empty post:", err)
-	}
+	p := NewEmptyPost("image/png")
 
 	if name := p.Filename(); name != fmt.Sprintf("%d.png", p.ID) {
 		t.Fatal("Unexpected filename:", name)
 	}
-
-	t.Run("InvalidContentType", func(t *testing.T) {
-		var contentTypes = []string{
-			"audio/ogg",
-			"",
-			"image/",
-			"image/tiff",
-		}
-
-		for _, ctype := range contentTypes {
-			if _, err := NewEmptyPost(ctype); !errors.Is(err, ErrUnsupportedFileType) {
-				t.Fatalf("Unexpected content-type (%q) error: %v", ctype, err)
-			}
-		}
-	})
 }
 
 func TestPosts(t *testing.T) {
@@ -48,10 +30,7 @@ func TestPosts(t *testing.T) {
 		tx := testBeginTx(t, d, owner.AuthToken)
 
 		for i := 0; i < len(posts); i++ {
-			p, err := NewEmptyPost("image/png")
-			if err != nil {
-				t.Fatal("Failed to create post:", err)
-			}
+			p := NewEmptyPost("image/png")
 
 			if err := tx.SavePost(&p); err != nil {
 				t.Fatal("Failed to save post:", err)
@@ -155,10 +134,7 @@ func TestNormalUploadedPosts(t *testing.T) {
 		tx := testBeginTx(t, d, s.AuthToken)
 
 		for i := 0; i < len(posts); i++ {
-			p, err := NewEmptyPost("image/png")
-			if err != nil {
-				t.Fatal("Failed to create post:", err)
-			}
+			p := NewEmptyPost("image/png")
 
 			if err := tx.SavePost(&p); err != nil {
 				t.Fatal("Failed to save post:", err)
@@ -208,15 +184,16 @@ func TestPostNullOwner(t *testing.T) {
 	owner := testNewOwner(t, d, "ひめありかわ", "password")
 	inviteToken := testOneTimeToken(t, d, owner.AuthToken)
 
-	u, err := d.Signup(context.TODO(), "かぐやありかわ", "password", inviteToken, "A")
+	var u *Session
+	err := d.AcquireGuest(context.TODO(), func(tx *Transaction) (err error) {
+		u, err = tx.Signup("かぐやありかわ", "password", inviteToken, "A")
+		return
+	})
 	if err != nil {
 		t.Fatal("Failed to create normal user:", err)
 	}
 
-	p, err := NewEmptyPost("image/png")
-	if err != nil {
-		t.Fatal("Failed to create post:", err)
-	}
+	p := NewEmptyPost("image/png")
 
 	t.Run("Setup", func(t *testing.T) {
 		tx := testBeginTx(t, d, u.AuthToken)
@@ -246,10 +223,7 @@ func TestPostNullOwner(t *testing.T) {
 
 func TestPostPermissions(t *testing.T) {
 	for perm, test := range testPermissionSet {
-		p, err := NewEmptyPost("image/png")
-		if err != nil {
-			t.Fatal("Failed to create post:", err)
-		}
+		p := NewEmptyPost("image/png")
 
 		t.Run(perm.String(), func(t *testing.T) {
 			d := newTestDatabase(t)
@@ -341,6 +315,10 @@ func testReadFailPermission(t *testing.T, d *Database,
 			if _, err := tx.Post(p.ID); !errors.Is(err, ErrPostNotFound) {
 				t.Fatalf("Unexpected error reading with deny permission %v: %v", perm, err)
 			}
+
+			if err := tx.CanViewPost(p.ID); !errors.Is(err, ErrPostNotFound) {
+				t.Fatalf("Unexpected error viewing with deny permission %v: %v", perm, err)
+			}
 		})
 	}
 }
@@ -352,10 +330,7 @@ func TestPostTags(t *testing.T) {
 
 	tx := testBeginTx(t, d, owner.AuthToken)
 
-	p, err := NewEmptyPost("image/png")
-	if err != nil {
-		t.Fatal("Failed to create post:", err)
-	}
+	p := NewEmptyPost("image/png")
 
 	if err := tx.SavePost(&p); err != nil {
 		t.Fatal("Failed to save post:", err)
@@ -445,6 +420,10 @@ Search:
 		}
 
 		t.Errorf("Tag %q not found", old)
+	}
+
+	if err := tx.TagPost(p.ID, ":o"); !errors.Is(err, ErrTagAlreadyAdded) {
+		t.Fatal("Unexpected error adding duplicate tag:", err)
 	}
 
 	for _, old := range tags {

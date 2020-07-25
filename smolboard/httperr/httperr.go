@@ -53,8 +53,8 @@ type wrapError struct {
 }
 
 var (
-	_ error       = (*basicError)(nil)
-	_ StatusCoder = (*basicError)(nil)
+	_ error       = (*wrapError)(nil)
+	_ StatusCoder = (*wrapError)(nil)
 )
 
 func Wrap(err error, code int, msg string) error {

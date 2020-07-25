@@ -24,9 +24,15 @@ func TestSession(t *testing.T) {
 
 	t.Log("Initialized one timer token. Hashing new user password...")
 
-	s, err := d.Signup(context.Background(), "かぐやありかわ", "abcd1234", token, "iOS")
+	var s *Session
+
+	err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+		s, err = tx.Signup("かぐやありかわ", "abcd1234", token, "iOS")
+		return
+	})
+
 	if err != nil {
-		t.Fatal("Failed to create a new user:", err)
+		t.Fatal("Failed to sign up:", err)
 	}
 
 	t.Log("Signed up as", s.Username)
@@ -38,7 +44,7 @@ func TestSession(t *testing.T) {
 
 	t.Log("Transaction has begun.")
 
-	n := tx.Session()
+	n := tx.Session
 
 	if s.Deadline >= n.Deadline {
 		t.Fatal("Fetched session's deadline is not renewed.")
@@ -130,38 +136,33 @@ func TestSessionSignout(t *testing.T) {
 
 func TestSessionExpiry(t *testing.T) {
 	d := newTestDatabase(t)
+	d.Config.tokenLifespan = 200 * time.Millisecond
 
 	owner := testNewOwner(t, d, "ひめありかわ", "goodpassword")
 
 	tx := testBeginTx(t, d, owner.AuthToken)
 
-	ex := 5 * time.Millisecond
-
-	s, err := NewSession("ひめありかわ", "A", ex)
+	s, err := tx.newSession("ひめありかわ", "A")
 	if err != nil {
 		t.Fatal("Failed to create session:", err)
 	}
 
-	if err := s.insert(tx.Tx.Tx); err != nil {
-		t.Fatal("Failed to insert session:", err)
-	}
-
 	// Wait for session to expire.
-	<-time.After(ex)
+	<-time.After(d.Config.tokenLifespan)
 
 	// Query.
-	_, err = QuerySession(tx.Tx, s.AuthToken, time.Hour)
+	_, err = tx.querySession(s.AuthToken)
 	if !errors.Is(err, ErrSessionExpired) {
 		t.Fatal("Unexpected error querying expired session:", err)
 	}
 
 	// Cleanup.
-	if err := cleanupSession(tx.Tx.Tx, time.Now().UnixNano()); err != nil {
+	if err := tx.cleanupSession(time.Now().UnixNano()); err != nil {
 		t.Fatal("Failed to cleanup session:", err)
 	}
 
 	// Check.
-	_, err = QuerySession(tx.Tx, s.AuthToken, time.Hour)
+	_, err = tx.querySession(s.AuthToken)
 	if !errors.Is(err, ErrSessionExpired) {
 		t.Fatal("Unexpected error querying expired session:", err)
 	}

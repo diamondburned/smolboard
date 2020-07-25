@@ -6,16 +6,16 @@ import (
 	"strconv"
 
 	"github.com/diamondburned/smolboard/smolboard/db/internal/null"
-	"github.com/diamondburned/smolboard/smolboard/sniff"
-	"github.com/diamondburned/smolboard/utils/httperr"
+	"github.com/diamondburned/smolboard/smolboard/httperr"
 	"github.com/pkg/errors"
 )
 
 type Post struct {
-	ID          int64       `json:"id"          db:"id"`
-	Poster      null.String `json:"poster"      db:"poster"`
-	ContentType string      `json:"contenttype" db:"contenttype"`
-	Permission  Permission  `json:"permission"  db:"permission"`
+	ID          int64       `json:"id"                 db:"id"`
+	Poster      null.String `json:"poster"             db:"poster"`
+	ContentType string      `json:"contenttype"        db:"contenttype"`
+	Permission  Permission  `json:"permission"         db:"permission"`
+	BlurHash    string      `json:"blurhash,omitempty" db:"blurhash"`
 }
 
 // PostWithTags is the type for a post with queried tags.
@@ -32,17 +32,12 @@ var (
 	ErrUnsupportedFileType = httperr.New(415, "unsupported file type")
 )
 
-func NewEmptyPost(ctype string) (Post, error) {
-	// Check if this is an expected content type.
-	if !sniff.ContentTypeAllowed(ctype) {
-		return Post{}, ErrUnsupportedFileType
-	}
-
+func NewEmptyPost(ctype string) Post {
 	return Post{
 		ID:          int64(postIDGen.Generate()),
 		ContentType: ctype,
 		Permission:  PermissionNormal,
-	}, nil
+	}
 }
 
 func (p *Post) SetPoster(poster string) {
@@ -61,30 +56,9 @@ func (p Post) Filename() string {
 	return sid + t[0]
 }
 
-func (p Post) insert(tx *sql.Tx) error {
-	if p.ID == 0 || p.Poster == "" || p.ContentType == "" {
-		return errors.New("cannot use empty post")
-	}
-
-	_, err := tx.Exec(
-		"INSERT INTO posts VALUES (?, ?, ?, ?)",
-		p.ID, p.Poster, p.ContentType, p.Permission,
-	)
-
-	if err != nil && errIsConstraint(err) {
-		return ErrUserNotFound
-	}
-
-	return err
-}
-
-// MUST TEST NULL OWNER!
-
-// TEST NON-EXISTENT USER
-
 // Posts returns the list of posts that's paginated. Count represents the limit
 // for each page and page represents the page offset 0-indexed.
-func (d *Transaction) Posts(count, page uint) (posts []Post, err error) {
+func (d *Transaction) Posts(count, page uint) ([]Post, error) {
 	p, err := d.Permission()
 	if err != nil {
 		return nil, err
@@ -102,12 +76,16 @@ func (d *Transaction) Posts(count, page uint) (posts []Post, err error) {
 		// always see their posts regardless of the post's permission.
 		"SELECT * FROM posts WHERE (poster = ? OR permission <= ?) ORDER BY id DESC LIMIT ?, ?",
 		// SQL is dumb and wants LIMIT (offset), (count) for some reason.
-		d.session.Username, p, offset, count,
+		d.Session.Username, p, offset, count,
 	)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to query for posts")
 	}
+
+	defer q.Close()
+
+	var posts = []Post{}
 
 	for q.Next() {
 		var p Post
@@ -119,7 +97,35 @@ func (d *Transaction) Posts(count, page uint) (posts []Post, err error) {
 		posts = append(posts, p)
 	}
 
-	return
+	return posts, nil
+}
+
+// CanViewPost returns nil if the current user can view a post.
+func (d *Transaction) CanViewPost(id int64) error {
+	// Fast path: ignore invalid IDs.
+	if id == 0 {
+		return ErrPostNotFound
+	}
+
+	p, err := d.Permission()
+	if err != nil {
+		return err
+	}
+
+	// Check if the post is there with the given constraints.
+	r := d.QueryRowx(
+		"SELECT COUNT(1) FROM posts WHERE id = ? AND (poster = ? OR permission <= ?)",
+		id, d.Session.Username, p,
+	)
+
+	if err := r.Scan(new(int)); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrPostNotFound
+		}
+		return errors.Wrap(err, "Failed to check post")
+	}
+
+	return nil
 }
 
 // Post returns a single post with the ID. It returns a post not found error if
@@ -134,7 +140,7 @@ func (d *Transaction) Post(id int64) (*PostWithTags, error) {
 		// Select the post only when the current user is the poster OR the
 		// user's permission is less than or equal to the post's.
 		"SELECT * FROM posts WHERE id = ? AND (poster = ? OR permission <= ?)",
-		id, d.session.Username, p,
+		id, d.Session.Username, p,
 	)
 
 	var post Post
@@ -157,6 +163,8 @@ func (d *Transaction) Post(id int64) (*PostWithTags, error) {
 		return nil, errors.Wrap(err, "Failed to get tags")
 	}
 
+	defer t.Close()
+
 	var tags []PostTag
 
 	// Prepared query for the sum of any tag.
@@ -164,6 +172,8 @@ func (d *Transaction) Post(id int64) (*PostWithTags, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to prepare count statement")
 	}
+
+	defer s.Close()
 
 	for t.Next() {
 		tag := PostTag{PostID: id}
@@ -183,10 +193,23 @@ func (d *Transaction) Post(id int64) (*PostWithTags, error) {
 }
 
 func (d *Transaction) SavePost(post *Post) error {
+	if post.ID == 0 || post.ContentType == "" {
+		return errors.New("cannot use empty post")
+	}
+
 	// Set the post's username to the current user.
-	post.SetPoster(d.session.Username)
-	// Insert into SQL with that username.
-	return post.insert(d.Tx.Tx)
+	post.SetPoster(d.Session.Username)
+
+	_, err := d.Exec(
+		"INSERT INTO posts VALUES (?, ?, ?, ?)",
+		post.ID, post.Poster, post.ContentType, post.Permission,
+	)
+
+	if err != nil && errIsConstraint(err) {
+		return ErrUserNotFound
+	}
+
+	return err
 }
 
 // canChangePost returns an error if the user cannot change this post. This
@@ -207,8 +230,6 @@ func (d *Transaction) canChangePost(postID int64) error {
 
 	return nil
 }
-
-// PERMISSION CHECK TEST!
 
 func (d *Transaction) DeletePost(id int64) error {
 	if err := d.canChangePost(id); err != nil {
@@ -248,16 +269,47 @@ type PostTag struct {
 	Count   int    `json:"count"    db:"-"`
 }
 
+const MaxTagLen = 256
+
+var (
+	ErrEmptyTag        = httperr.New(400, "empty tag not allowed")
+	ErrTagTooLong      = httperr.New(400, "tag is too long")
+	ErrTagAlreadyAdded = httperr.New(400, "tag is already added")
+)
+
+func validTag(tag string) error {
+	if tag == "" {
+		return ErrEmptyTag
+	}
+	if len(tag) > 256 {
+		return ErrTagTooLong
+	}
+	return nil
+}
+
 func (d *Transaction) TagPost(postID int64, tag string) error {
+	if err := validTag(tag); err != nil {
+		return err
+	}
+
 	if err := d.canChangePost(postID); err != nil {
 		return err
 	}
 
 	r, err := d.Exec("INSERT INTO posttags VALUES (?, ?)", postID, tag)
+	if err != nil {
+		if errIsConstraint(err) {
+			return ErrTagAlreadyAdded
+		}
+	}
 	return wrapPostErr(r, err, "Failed to execute insert tag")
 }
 
 func (d *Transaction) UntagPost(postID int64, tag string) error {
+	if err := validTag(tag); err != nil {
+		return err
+	}
+
 	if err := d.canChangePost(postID); err != nil {
 		return err
 	}

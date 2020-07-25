@@ -20,7 +20,11 @@ func TestUser(t *testing.T) {
 	var ownerToken string
 
 	t.Run("VerifyPassword", func(t *testing.T) {
-		k, err := d.Signin(context.Background(), "ひめありかわ1", "goodpassword", "")
+		var k *Session
+		err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+			k, err = tx.Signin("ひめありかわ1", "goodpassword", "")
+			return err
+		})
 		if err != nil {
 			t.Fatal("Failed to sign in:", err)
 		}
@@ -28,14 +32,20 @@ func TestUser(t *testing.T) {
 	})
 
 	t.Run("InvalidPassword", func(t *testing.T) {
-		_, err := d.Signin(context.Background(), "ひめありかわ1", "badpassword", "")
+		err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+			_, err = tx.Signin("ひめありかわ1", "badpassword", "")
+			return err
+		})
 		if !errors.Is(err, ErrInvalidPassword) {
 			t.Fatal("Unexpected error with invalid password:", err)
 		}
 	})
 
 	t.Run("UnknownUser", func(t *testing.T) {
-		_, err := d.Signin(context.Background(), "ヒメゴト", "mehpassword", "")
+		err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+			_, err = tx.Signin("ヒメゴト", "mehpassword", "")
+			return err
+		})
 		if !errors.Is(err, ErrInvalidPassword) {
 			t.Fatal("Unexpected error with invalid password:", err)
 		}
@@ -45,7 +55,10 @@ func TestUser(t *testing.T) {
 	t.Run("DuplicateOwner", func(t *testing.T) {
 		k := testOneTimeToken(t, d, ownerToken)
 
-		_, err := d.Signup(context.Background(), "ひめありかわ1", "12345678", k, "")
+		err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+			_, err = tx.Signup("ひめありかわ1", "12345678", k, "")
+			return err
+		})
 		if !errors.Is(err, ErrUsernameTaken) {
 			t.Fatal("Unexpected error while creating duplicate user:", err)
 		}
@@ -55,7 +68,10 @@ func TestUser(t *testing.T) {
 		k := testOneTimeToken(t, d, ownerToken)
 
 		t.Run("Create", func(t *testing.T) {
-			_, err := d.Signup(context.Background(), "かぐやありかわ", "12121212", k, "")
+			err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+				_, err = tx.Signup("かぐやありかわ", "12121212", k, "")
+				return err
+			})
 			if err != nil {
 				t.Fatal("Failed to sign up:", err)
 			}
@@ -64,7 +80,11 @@ func TestUser(t *testing.T) {
 		var token string
 
 		t.Run("Signin", func(t *testing.T) {
-			k, err := d.Signin(context.Background(), "かぐやありかわ", "12121212", "")
+			var k *Session
+			err := d.AcquireGuest(context.Background(), func(tx *Transaction) (err error) {
+				k, err = tx.Signin("かぐやありかわ", "12121212", "")
+				return err
+			})
 			if err != nil {
 				t.Fatal("Failed to sign in:", err)
 			}
@@ -131,21 +151,6 @@ func TestUser(t *testing.T) {
 			t.Fatal("Unexpected error getting illegal named user:", err)
 		}
 	})
-
-	// t.Run("Admin", func(t *testing.T) {
-	// 	admin := newTestUser(t, d, ownerToken, "ひろ", PermissionAdministrator)
-
-	// 	t.Run("DeleteTrusted", func(t *testing.T) {
-	// 		trusted := newTestUser(t, d, ownerToken, "みつながおだ", PermissionTrusted)
-
-	// 		tx := testBeginTx(t, d, admin.AuthToken)
-
-	// 		if err := tx.DeleteUser(trusted.Username); err != nil {
-	// 			t.Fatal("Faield to ")
-	// 		}
-	// 	})
-
-	// })
 
 	t.Run("DeleteOwner", func(t *testing.T) {
 		tx := testBeginTx(t, d, ownerToken)
@@ -217,14 +222,18 @@ func TestAdminDelete(t *testing.T) {
 }
 
 func TestIllegalUser(t *testing.T) {
-	_, err := NewUser("ひめ　ありかわ", "", PermissionNormal)
+	tx := (*Transaction)(nil)
+
+	err := tx.createUser("ひめ　ありかわ", "", PermissionNormal)
 	if !errors.Is(err, ErrIllegalName) {
 		t.Fatal("Unexpected error while creating illegal-name user:", err)
 	}
 }
 
 func TestShortPassword(t *testing.T) {
-	_, err := NewUser("a", "b", PermissionNormal)
+	tx := (*Transaction)(nil)
+
+	err := tx.createUser("a", "b", PermissionNormal)
 	if !errors.Is(err, ErrPasswordTooShort) {
 		t.Fatal("Unexpected error while creating a password too short:", err)
 	}

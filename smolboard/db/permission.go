@@ -63,7 +63,12 @@ func (d *Transaction) permission(user string) (perm Permission, err error) {
 // Permission scans for the permissions, or returns action not permitted if the
 // user does not exist.
 func (d *Transaction) Permission() (perm Permission, err error) {
-	return d.permission(d.session.Username)
+	// Zero-value; allow guests.
+	if d.Session.ID == 0 {
+		return PermissionNormal, nil
+	}
+
+	return d.permission(d.Session.Username)
 }
 
 // HasPermission returns nil if the user has the given permission. If inclusive
@@ -88,7 +93,7 @@ func (d *Transaction) HasPermission(min Permission, inclusive bool) error {
 }
 
 func (d *Transaction) IsUserOrHasPermOver(min Permission, user string) error {
-	if d.session.Username == user {
+	if d.Session.Username == user {
 		return nil
 	}
 	return d.HasPermOverUser(min, user)
@@ -115,7 +120,7 @@ func (d *Transaction) HasPermOverUser(min Permission, user string) error {
 
 	// If the target user is the current user and the target permission is the
 	// same or lower than the target, then allow.
-	if d.session.Username == user && p >= min {
+	if d.Session.Username == user && p >= min {
 		return nil
 	}
 

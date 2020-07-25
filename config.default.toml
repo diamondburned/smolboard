@@ -1,0 +1,31 @@
+# Default fallback config file for smolboard; DO NOT EDIT.
+# Either create a new config.toml and override these options or use the -config
+# flag.
+
+owner         = "diamondburned"
+databasePath  = "/tmp/smolboard.db"
+maxTokenUses  = 100
+tokenLifespan = "1h"
+
+address     = "127.0.0.1:42069"
+maxBodySize = "1GB" # absolute max size including file name and form
+
+maxFileSize  = "500MB" # absolute max file size
+allowedTypes = [
+	# https://mimesniff.spec.whatwg.org/#matching-an-image-type-pattern
+	"image/jpeg", "image/png", "image/gif", "image/webp",
+	# https://mimesniff.spec.whatwg.org/#matching-an-audio-or-video-type-pattern
+	"video/avi", "video/mp4", "video/webm",
+]
+
+# Size is calculated as such:
+#
+#   min(maxBodySize, min(maxFileSize, min(MaxSize.Any)))
+#
+
+[MaxSize]
+"image"     = "10MB"
+"image/png" = "20MB"
+"image/gif" = "50MB"
+"video"     = "250MB"
+"video/mp4" = "500MB"

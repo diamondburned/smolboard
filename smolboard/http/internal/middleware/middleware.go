@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"bufio"
 	"io"
 	"net/http"
 
@@ -40,7 +41,10 @@ func P(h H) F {
 func LimitBody(size datasize.ByteSize) F {
 	return P(func(w http.ResponseWriter, r *http.Request) bool {
 		r.Body = newReadCloser(
-			upload.NewLimitedReader(r.Body, int64(size.Bytes())),
+			upload.NewLimitedReader(
+				bufio.NewReader(r.Body),
+				int64(size.Bytes()),
+			),
 			r.Body,
 		)
 		return true

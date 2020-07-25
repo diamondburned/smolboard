@@ -77,14 +77,14 @@ func New(db *db.Database, cfg HTTPConfig) (*Routes, error) {
 		middleware.LimitBody(cfg.MaxBodySize),
 	)
 
-	mux.Group(func(r chi.Router) {
+	mux.Group(func(mux chi.Router) {
 		mux.Use(limit.RateLimit(2))
 		mux.Post("/signin", m(user.Signin))
 		mux.Post("/signup", m(user.Signup))
 		mux.Post("/signout", m(user.Signout))
 	})
 
-	mux.Group(func(r chi.Router) {
+	mux.Group(func(mux chi.Router) {
 		mux.Use(limit.RateLimit(64))
 		mux.Get("/filetypes", GetTypes(cfg))
 	})

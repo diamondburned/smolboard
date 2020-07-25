@@ -4,14 +4,15 @@
 
 owner         = "diamondburned"
 databasePath  = "/tmp/smolboard.db"
-maxTokenUses  = 100
-tokenLifespan = "1h"
+maxTokenUses  = 100  # max use for the invitation token
+tokenLifespan = "1h" # lifespan for the session token
 
 address     = "127.0.0.1:42069"
 maxBodySize = "1GB" # absolute max size including file name and form
 
-maxFileSize  = "500MB" # absolute max file size
-allowedTypes = [
+fileDirectory = "/tmp/smolboard-store/"
+maxFileSize   = "500MB" # absolute max file size
+allowedTypes  = [
 	# https://mimesniff.spec.whatwg.org/#matching-an-image-type-pattern
 	"image/jpeg", "image/png", "image/gif", "image/webp",
 	# https://mimesniff.spec.whatwg.org/#matching-an-audio-or-video-type-pattern

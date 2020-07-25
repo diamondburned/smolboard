@@ -49,12 +49,14 @@ func NewConfig() UploadConfig {
 
 func (c *UploadConfig) Validate() error {
 	s, err := os.Stat(c.FileDirectory)
-	if err != nil {
-		return errors.Wrap(err, "Failed to stat fileDirectory")
-	}
-
-	if !s.IsDir() {
-		return fmt.Errorf("fileDirectory %q is not a directory", c.FileDirectory)
+	if err == nil {
+		if !s.IsDir() {
+			return fmt.Errorf("fileDirectory %q is not a directory", c.FileDirectory)
+		}
+	} else {
+		if err := os.MkdirAll(c.FileDirectory, os.ModePerm|os.ModeDir); err != nil {
+			return errors.Wrap(err, "Failed to create fileDirectory")
+		}
 	}
 
 	return nil

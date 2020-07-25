@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 
 	"github.com/diamondburned/smolboard/smolboard"
@@ -20,6 +22,19 @@ func init() {
 		&configGlob, "config", "c", configGlob,
 		"Path to config file with glob support for fallback",
 	)
+
+	pflag.Usage = func() {
+		stderrlnf("Usage: %s [subcommand] [flags...]", filepath.Base(os.Args[0]))
+		stderrlnf("Subcommands:")
+		stderrlnf("  create-owner   Create a new owner user")
+		stderrlnf("  serve          Run the HTTP server")
+		stderrlnf("Flags:")
+		pflag.PrintDefaults()
+	}
+}
+
+func stderrlnf(f string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, f+"\n", v...)
 }
 
 func main() {
@@ -46,6 +61,10 @@ func main() {
 		if err := toml.Unmarshal(f, &cfg); err != nil {
 			log.Fatalln("Failed to unmarshal from TOML:", err)
 		}
+	}
+
+	switch pflag.Arg(0) {
+	case "create-owner":
 	}
 
 	log.Println("Starting listener at", cfg.Address)

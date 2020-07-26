@@ -77,20 +77,22 @@ var testPermissionSet = map[Permission]permTest{
 			return owner
 		},
 		[]Permission{
-			PermissionOwner,
-			PermissionAdministrator,
+			PermissionGuest,
+			PermissionUser,
 			PermissionTrusted,
+			PermissionAdministrator,
 			PermissionOwner,
 		},
 		[]Permission{},
 	},
-	PermissionNormal: {
+	PermissionUser: {
 		func(t *testing.T, d *Database, owner *Session) *Session {
 			t.Helper()
-			return newTestUser(t, d, owner.AuthToken, "かぐやありかわ", PermissionNormal)
+			return newTestUser(t, d, owner.AuthToken, "かぐやありかわ", PermissionUser)
 		},
 		[]Permission{
-			PermissionNormal,
+			PermissionGuest,
+			PermissionUser,
 		},
 		[]Permission{
 			PermissionOwner,
@@ -104,12 +106,13 @@ var testPermissionSet = map[Permission]permTest{
 			return newTestUser(t, d, owner.AuthToken, "みつながおだ", PermissionTrusted)
 		},
 		[]Permission{
-			PermissionNormal,
+			PermissionGuest,
+			PermissionUser,
 			PermissionTrusted,
 		},
 		[]Permission{
-			PermissionAdministrator,
 			PermissionOwner,
+			PermissionAdministrator,
 		},
 	},
 	PermissionAdministrator: {
@@ -118,7 +121,8 @@ var testPermissionSet = map[Permission]permTest{
 			return newTestUser(t, d, owner.AuthToken, "とよとみヒロ", PermissionAdministrator)
 		},
 		[]Permission{
-			PermissionNormal,
+			PermissionGuest,
+			PermissionUser,
 			PermissionTrusted,
 			PermissionAdministrator,
 		},

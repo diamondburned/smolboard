@@ -18,13 +18,13 @@ func Mount(m tx.Middlewarer) http.Handler {
 	mux := chi.NewMux()
 	mux.Use(limit.RateLimit(64))
 	mux.Get("/", m(ListPosts))
+	// POST but parse form before entering a transaction.
+	mux.With(preparseMultipart, limit.RateLimit(2)).Post("/", m(UploadPost))
+
 	mux.Route("/{id}", func(r chi.Router) {
 		// GET gives both tags and permission.
 		r.Get("/", m(GetPost))
 		r.Delete("/", m(DeletePost))
-
-		// POST but parse form before entering a transaction.
-		r.With(preparseMultipart).Post("/", m(UploadPost))
 
 		r.Patch("/permission", m(SetPostPermission))
 

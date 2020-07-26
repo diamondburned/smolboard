@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/diamondburned/duration"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
@@ -45,7 +46,7 @@ var migrations = []string{`
 			ON DELETE SET NULL,
 		contenttype TEXT    NOT NULL,
 		permission  INTEGER NOT NULL,
-		blurhash    TEXT    NOT NULL
+		attributes  BLOB
 	);
 
 	CREATE TABLE posttags (
@@ -68,7 +69,7 @@ type DBConfig struct {
 func NewConfig() DBConfig {
 	return DBConfig{
 		MaxTokenUses:  100,
-		TokenLifespan: "1h",
+		TokenLifespan: "7d",
 	}
 }
 
@@ -81,11 +82,11 @@ func (c *DBConfig) Validate() error {
 		return errors.New("missing `databasePath' value")
 	}
 
-	d, err := time.ParseDuration(c.TokenLifespan)
+	d, err := duration.ParseDuration(c.TokenLifespan)
 	if err != nil {
 		return errors.Wrap(err, "invalid token lifespan")
 	}
-	c.tokenLifespan = d
+	c.tokenLifespan = time.Duration(d)
 
 	return nil
 }
@@ -150,6 +151,23 @@ func NewDatabase(config DBConfig) (*Database, error) {
 	}
 
 	return db, nil
+}
+
+// CreateOwner initializes the database once then creates the owner account.
+func CreateOwner(config DBConfig, password string) error {
+	d, err := NewDatabase(config)
+	if err != nil {
+		return errors.Wrap(err, "Failed to initialize database")
+	}
+
+	if err := d.createOwner(password); err != nil {
+		if errIsConstraint(err) {
+			return errors.New("owner account already created")
+		}
+		return errors.Wrap(err, "Failed to create owner")
+	}
+
+	return nil
 }
 
 func (d *Database) Close() error {
@@ -230,7 +248,8 @@ func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) er
 }
 
 var readOnlyOpts = &sql.TxOptions{
-	ReadOnly: true,
+	Isolation: sql.LevelSnapshot,
+	ReadOnly:  true,
 }
 
 func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {

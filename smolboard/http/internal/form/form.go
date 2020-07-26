@@ -3,16 +3,19 @@ package form
 import (
 	"net/http"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/diamondburned/smolboard/smolboard/http/internal/tx"
 	"github.com/gorilla/schema"
 	"github.com/pkg/errors"
 )
 
+const MaxMemory = int64(2 * datasize.MB)
+
 var decoder = schema.NewDecoder()
 
 // Unmarshal decodes the form in the given request into the interface.
 func Unmarshal(r tx.Request, v interface{}) error {
-	if err := r.ParseForm(); err != nil {
+	if err := r.ParseMultipartForm(MaxMemory); err != nil {
 		return errors.Wrap(err, "Failed to parse form")
 	}
 

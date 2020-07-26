@@ -51,10 +51,6 @@ func getStored(r tx.Request) (postID int64, fileName string) {
 }
 
 func trimExt(name string) string {
-	if name == "" {
-		return ""
-	}
-
 	switch parts := strings.Split(name, "."); len(parts) {
 	case 0:
 		return ""

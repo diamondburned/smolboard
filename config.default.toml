@@ -5,9 +5,9 @@
 owner         = "diamondburned"
 databasePath  = "/tmp/smolboard.db"
 maxTokenUses  = 100  # max use for the invitation token
-tokenLifespan = "1h" # lifespan for the session token
+tokenLifespan = "7d" # lifespan for the session token
 
-address     = "127.0.0.1:42069"
+address     = "localhost:42069"
 maxBodySize = "1GB" # absolute max size including file name and form
 
 fileDirectory = "/tmp/smolboard-store/"

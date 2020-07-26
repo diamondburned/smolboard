@@ -224,7 +224,7 @@ func TestAdminDelete(t *testing.T) {
 func TestIllegalUser(t *testing.T) {
 	tx := (*Transaction)(nil)
 
-	err := tx.createUser("ひめ　ありかわ", "", PermissionNormal)
+	err := tx.createUser("ひめ　ありかわ", "", PermissionUser)
 	if !errors.Is(err, ErrIllegalName) {
 		t.Fatal("Unexpected error while creating illegal-name user:", err)
 	}
@@ -233,7 +233,7 @@ func TestIllegalUser(t *testing.T) {
 func TestShortPassword(t *testing.T) {
 	tx := (*Transaction)(nil)
 
-	err := tx.createUser("a", "b", PermissionNormal)
+	err := tx.createUser("a", "b", PermissionUser)
 	if !errors.Is(err, ErrPasswordTooShort) {
 		t.Fatal("Unexpected error while creating a password too short:", err)
 	}

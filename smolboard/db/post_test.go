@@ -31,6 +31,11 @@ func TestPosts(t *testing.T) {
 
 		for i := 0; i < len(posts); i++ {
 			p := NewEmptyPost("image/png")
+			p.Attributes = PostAttribute{
+				Width:    1920,
+				Height:   1080,
+				Blurhash: "klasddsjadad",
+			}
 
 			if err := tx.SavePost(&p); err != nil {
 				t.Fatal("Failed to save post:", err)
@@ -97,7 +102,7 @@ func TestPosts(t *testing.T) {
 
 	t.Run("PosterOverridePermission", func(t *testing.T) {
 		// Create a new normal user and test.
-		s := newTestUser(t, d, owner.AuthToken, "かぐやありかわ", PermissionNormal)
+		s := newTestUser(t, d, owner.AuthToken, "かぐやありかわ", PermissionUser)
 
 		tx := testBeginTx(t, d, s.AuthToken)
 
@@ -125,7 +130,7 @@ func TestNormalUploadedPosts(t *testing.T) {
 	owner := testNewOwner(t, d, "ひめありかわ", "password")
 
 	// Make the user account.
-	s := newTestUser(t, d, owner.AuthToken, "かぐやありかわ", PermissionNormal)
+	s := newTestUser(t, d, owner.AuthToken, "かぐやありかわ", PermissionUser)
 
 	// Make 20 posts.
 	var posts = make([]Post, 20)
@@ -312,12 +317,12 @@ func testReadFailPermission(t *testing.T, d *Database,
 		t.Run("TryReadPost", func(t *testing.T) {
 			tx := testBeginTx(t, d, u.AuthToken)
 
-			if _, err := tx.Post(p.ID); !errors.Is(err, ErrPostNotFound) {
-				t.Fatalf("Unexpected error reading with deny permission %v: %v", perm, err)
-			}
-
 			if err := tx.CanViewPost(p.ID); !errors.Is(err, ErrPostNotFound) {
 				t.Fatalf("Unexpected error viewing with deny permission %v: %v", perm, err)
+			}
+
+			if _, err := tx.Post(p.ID); !errors.Is(err, ErrPostNotFound) {
+				t.Fatalf("Unexpected error reading with deny permission %v: %v", perm, err)
 			}
 		})
 	}
@@ -403,23 +408,13 @@ func TestPostTags(t *testing.T) {
 		t.Fatal("Post mismatch:", eq)
 	}
 
-Search:
-	for _, old := range tags {
-		for _, tag := range q.Tags {
-			if tag.TagName == old {
-				if tag.Count != 1 {
-					t.Errorf("Invalid tag count %d for tag %q", tag.Count, old)
-				}
+	var postTags = make([]string, len(q.Tags))
+	for i, tag := range q.Tags {
+		postTags[i] = tag.TagName
+	}
 
-				if tag.PostID != q.ID {
-					t.Errorf("Tag has ID mismatch: %d != %d", tag.PostID, q.ID)
-				}
-
-				continue Search
-			}
-		}
-
-		t.Errorf("Tag %q not found", old)
+	if eq := deep.Equal(postTags, tags); eq != nil {
+		t.Fatal("Tags mismatch:", eq)
 	}
 
 	if err := tx.TagPost(p.ID, ":o"); !errors.Is(err, ErrTagAlreadyAdded) {

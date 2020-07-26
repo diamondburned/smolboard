@@ -6,13 +6,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Permission uint8
+type Permission int8
 
 var ErrInvalidPermission = errors.New("invalid permission")
 
 const (
-	// PermissionNormal is a normal user's base permission. It allows uploading.
-	PermissionNormal Permission = iota
+	// PermissionGuest is the zero-value of permission, which indicates a guest.
+	PermissionGuest Permission = iota
+	// PermissionUser is a normal user's base permission. It allows uploading.
+	PermissionUser
 	// PermissionTrusted has access to posts marked as trusted-only. Trusted
 	// users can mark a post as trusted.
 	PermissionTrusted
@@ -28,8 +30,10 @@ const (
 
 func (p Permission) String() string {
 	switch p {
-	case PermissionNormal:
-		return "Normal"
+	case PermissionGuest:
+		return "Guest"
+	case PermissionUser:
+		return "User"
 	case PermissionTrusted:
 		return "Trusted"
 	case PermissionAdministrator:
@@ -65,7 +69,7 @@ func (d *Transaction) permission(user string) (perm Permission, err error) {
 func (d *Transaction) Permission() (perm Permission, err error) {
 	// Zero-value; allow guests.
 	if d.Session.ID == 0 {
-		return PermissionNormal, nil
+		return PermissionGuest, nil
 	}
 
 	return d.permission(d.Session.Username)
@@ -75,7 +79,7 @@ func (d *Transaction) Permission() (perm Permission, err error) {
 // is true, then nil is returned if the user has the same permission as min.
 func (d *Transaction) HasPermission(min Permission, inclusive bool) error {
 	// Is this a valid permission?
-	if min < 0 || min > PermissionOwner {
+	if min < PermissionGuest || min > PermissionOwner {
 		return ErrInvalidPermission
 	}
 
@@ -103,7 +107,7 @@ func (d *Transaction) IsUserOrHasPermOver(min Permission, user string) error {
 // permission and has a higher permission than the target user.
 func (d *Transaction) HasPermOverUser(min Permission, user string) error {
 	// Is this a valid permission?
-	if min < 0 || min > PermissionOwner {
+	if min < PermissionGuest || min > PermissionOwner {
 		return ErrInvalidPermission
 	}
 

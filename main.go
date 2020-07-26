@@ -9,6 +9,7 @@ import (
 
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/spf13/pflag"
+	"golang.org/x/crypto/ssh/terminal"
 
 	toml "github.com/pelletier/go-toml"
 )
@@ -26,7 +27,7 @@ func init() {
 	pflag.Usage = func() {
 		stderrlnf("Usage: %s [subcommand] [flags...]", filepath.Base(os.Args[0]))
 		stderrlnf("Subcommands:")
-		stderrlnf("  create-owner   Create a new owner user")
+		stderrlnf("  create-owner   Initialize a new owner user once")
 		stderrlnf("  serve          Run the HTTP server")
 		stderrlnf("Flags:")
 		pflag.PrintDefaults()
@@ -65,11 +66,25 @@ func main() {
 
 	switch pflag.Arg(0) {
 	case "create-owner":
-	}
+		fmt.Print("Enter your password: ")
+		p, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			log.Fatalln("Failed to read password:", err)
+		}
 
-	log.Println("Starting listener at", cfg.Address)
+		fmt.Println()
 
-	if err := smolboard.ListenAndServe(cfg); err != nil {
-		log.Fatalln("Failed to start:", err)
+		if err := smolboard.CreateOwner(cfg, p); err != nil {
+			log.Fatalln(err)
+		}
+
+	case "serve":
+		fallthrough
+	default:
+		log.Println("Starting listener at", cfg.Address)
+
+		if err := smolboard.ListenAndServe(cfg); err != nil {
+			log.Fatalln("Failed to start:", err)
+		}
 	}
 }

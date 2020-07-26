@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/diamondburned/smolboard/smolboard/db"
@@ -33,11 +34,17 @@ func (r *Request) SetSession(s *db.Session) {
 		r.Tx.Session = db.Session{}
 	}
 
+	var host string
+	if strings.Contains(r.Host, ".") {
+		host = r.Host
+	}
+
 	http.SetCookie(r.wr, &http.Cookie{
-		Name:    "token",
-		Value:   r.Tx.Session.AuthToken,
-		Expires: time.Unix(0, r.Tx.Session.Deadline),
-		Secure:  true,
+		Name:     "token",
+		Value:    r.Tx.Session.AuthToken,
+		Domain:   host,
+		Expires:  time.Unix(0, r.Tx.Session.Deadline),
+		SameSite: http.SameSiteStrictMode,
 	})
 }
 

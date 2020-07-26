@@ -38,6 +38,10 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func CreateOwner(config Config, password []byte) error {
+	return db.CreateOwner(config.DBConfig, string(password))
+}
+
 type App struct {
 	*http.Routes
 	Database *db.Database

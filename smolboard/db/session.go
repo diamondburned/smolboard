@@ -146,7 +146,7 @@ func (d *Transaction) Signup(user, pass, token, UA string) (*Session, error) {
 		return nil, err
 	}
 
-	if err := d.createUser(user, pass, PermissionNormal); err != nil {
+	if err := d.createUser(user, pass, PermissionUser); err != nil {
 		return nil, err
 	}
 

@@ -90,7 +90,7 @@ func New(db *db.Database, cfg HTTPConfig) (*Routes, error) {
 	})
 
 	mux.Mount("/tokens", token.Mount(m))
-	mux.Mount("/image", imgsrv.Mount(m))
+	mux.Mount("/images", imgsrv.Mount(m))
 	mux.Mount("/posts", post.Mount(m))
 	mux.Mount("/users", user.Mount(m))
 

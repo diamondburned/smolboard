@@ -3,9 +3,9 @@ package imgsrv
 import (
 	"bytes"
 	"image/png"
+	"log"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/diamondburned/smolboard/smolboard/http/internal/limit"
@@ -29,10 +29,12 @@ var thumbThrottler = middleware.Throttle(128)
 func Mount(m tx.Middlewarer) http.Handler {
 	mux := chi.NewMux()
 	mux.Use(limit.RateLimit(128)) // 128 accesses per second
-	mux.Route("/{file}", func(r chi.Router) {
-		mux.Get("/", m(ServePost))
+
+	// Parse the filename for the post ID.
+	mux.With(parseID).Route("/{file}", func(r chi.Router) {
+		r.Get("/", m(ServePost))
 		// Throttle to 128 simultaneous thumbnail renders a second.
-		mux.With(thumbThrottler).Get("/thumb", m(ServeThumbnail))
+		r.With(thumbThrottler).Get("/thumb", m(ServeThumbnail))
 	})
 
 	return mux
@@ -40,13 +42,14 @@ func Mount(m tx.Middlewarer) http.Handler {
 
 func ServePost(r tx.Request) (interface{}, error) {
 	id, name := getStored(r)
+	log.Printf("id=%d,name=%q\n", id, name)
 
 	if err := r.Tx.CanViewPost(id); err != nil {
 		return nil, err
 	}
 
 	return func(w http.ResponseWriter) error {
-		http.ServeFile(w, r.Request, name)
+		http.ServeFile(w, r.Request, filepath.Join(r.Up.FileDirectory, name))
 		return nil
 	}, nil
 }
@@ -59,6 +62,7 @@ var encopts = []imaging.EncodeOption{
 
 func ServeThumbnail(r tx.Request) (interface{}, error) {
 	id, name := getStored(r)
+	log.Printf("id=%d,name=%q\n", id, name)
 
 	if err := r.Tx.CanViewPost(id); err != nil {
 		return nil, err
@@ -70,7 +74,7 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 			return httperr.Wrap(err, 400, "Failed to get format")
 		}
 
-		f, err := os.Open(filepath.Join(r.Up.FileDirectory, path.Base(r.URL.Path)))
+		f, err := os.Open(filepath.Join(r.Up.FileDirectory, name))
 		if err != nil {
 			return errors.Wrap(err, "Failed to open file")
 		}

@@ -131,9 +131,16 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*db.Post, error)
 	// Blurhash time. This hash is optional, so it's fine being empty.
 	i, err := imaging.Open(downloaded, imaging.AutoOrientation(true))
 	if err == nil {
-		h, err := blurhash.Encode(5, 5, i)
+		bounds := i.Bounds()
+		p.Attributes.Width = bounds.Dx()
+		p.Attributes.Height = bounds.Dy()
+
+		// Resize the image using a rough algorithm.
+		i = imaging.Fit(i, 50, 50, imaging.Box)
+
+		h, err := blurhash.Encode(4, 3, i)
 		if err == nil {
-			p.BlurHash = h
+			p.Attributes.Blurhash = h
 		}
 	}
 

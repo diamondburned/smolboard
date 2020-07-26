@@ -2,6 +2,8 @@ package db
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
 	"mime"
 	"strconv"
 
@@ -10,12 +12,34 @@ import (
 	"github.com/pkg/errors"
 )
 
+type PostAttribute struct {
+	Width    int    `json:"w,omitempty"`
+	Height   int    `json:"h,omitempty"`
+	Blurhash string `json:"blurhash,omitempty"`
+}
+
+func (a *PostAttribute) Scan(v interface{}) error {
+	if v == nil {
+		return nil
+	}
+
+	if b, ok := v.([]byte); ok {
+		return json.Unmarshal(b, a)
+	}
+
+	return errors.Wrapf(null.ErrUnexpectedType, "Failed to scan %#v", v)
+}
+
+func (a PostAttribute) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
 type Post struct {
-	ID          int64       `json:"id"                 db:"id"`
-	Poster      null.String `json:"poster"             db:"poster"`
-	ContentType string      `json:"contenttype"        db:"contenttype"`
-	Permission  Permission  `json:"permission"         db:"permission"`
-	BlurHash    string      `json:"blurhash,omitempty" db:"blurhash"`
+	ID          int64         `json:"id"          db:"id"`
+	Poster      null.String   `json:"poster"      db:"poster"`
+	ContentType string        `json:"contenttype" db:"contenttype"`
+	Permission  Permission    `json:"permission"  db:"permission"`
+	Attributes  PostAttribute `json:"attributes"  db:"attributes"`
 }
 
 // PostWithTags is the type for a post with queried tags.
@@ -36,7 +60,7 @@ func NewEmptyPost(ctype string) Post {
 	return Post{
 		ID:          int64(postIDGen.Generate()),
 		ContentType: ctype,
-		Permission:  PermissionNormal,
+		Permission:  PermissionGuest,
 	}
 }
 
@@ -114,15 +138,19 @@ func (d *Transaction) CanViewPost(id int64) error {
 
 	// Check if the post is there with the given constraints.
 	r := d.QueryRowx(
-		"SELECT COUNT(1) FROM posts WHERE id = ? AND (poster = ? OR permission <= ?)",
+		"SELECT COUNT(1) FROM posts WHERE id = ? AND (poster = ? OR permission <= ?) LIMIT 1",
 		id, d.Session.Username, p,
 	)
 
-	if err := r.Scan(new(int)); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrPostNotFound
-		}
+	// COUNT(1) never returns no rows, so we use this number to check.
+	var count int
+
+	if err := r.Scan(&count); err != nil {
 		return errors.Wrap(err, "Failed to check post")
+	}
+
+	if count == 0 {
+		return ErrPostNotFound
 	}
 
 	return nil
@@ -131,6 +159,11 @@ func (d *Transaction) CanViewPost(id int64) error {
 // Post returns a single post with the ID. It returns a post not found error if
 // the post is not found or the user does not have permission to see the post.
 func (d *Transaction) Post(id int64) (*PostWithTags, error) {
+	// Fast path: ignore invalid IDs.
+	if id == 0 {
+		return nil, ErrPostNotFound
+	}
+
 	p, err := d.Permission()
 	if err != nil {
 		return nil, err
@@ -153,7 +186,10 @@ func (d *Transaction) Post(id int64) (*PostWithTags, error) {
 		return nil, errors.Wrap(err, "Failed to get post")
 	}
 
-	t, err := d.Queryx("SELECT tagname FROM posttags WHERE postid = ?", id)
+	t, err := d.Queryx(
+		"SELECT tagname FROM posttags WHERE postid = ? ORDER BY tagname ASC",
+		id,
+	)
 	if err != nil {
 		// If we have no rows, then just return the post only.
 		if errors.Is(err, sql.ErrNoRows) {
@@ -165,7 +201,7 @@ func (d *Transaction) Post(id int64) (*PostWithTags, error) {
 
 	defer t.Close()
 
-	var tags []PostTag
+	var tags = []PostTag{}
 
 	// Prepared query for the sum of any tag.
 	s, err := d.Prepare("SELECT COUNT(postid) FROM posttags WHERE tagname = ?")
@@ -197,12 +233,16 @@ func (d *Transaction) SavePost(post *Post) error {
 		return errors.New("cannot use empty post")
 	}
 
+	if err := d.HasPermission(PermissionUser, true); err != nil {
+		return err
+	}
+
 	// Set the post's username to the current user.
 	post.SetPoster(d.Session.Username)
 
 	_, err := d.Exec(
-		"INSERT INTO posts VALUES (?, ?, ?, ?)",
-		post.ID, post.Poster, post.ContentType, post.Permission,
+		"INSERT INTO posts VALUES (?, ?, ?, ?, ?)",
+		post.ID, post.Poster, post.ContentType, post.Permission, post.Attributes,
 	)
 
 	if err != nil && errIsConstraint(err) {
@@ -217,14 +257,14 @@ func (d *Transaction) SavePost(post *Post) error {
 func (d *Transaction) canChangePost(postID int64) error {
 	q := d.QueryRow("SELECT poster FROM posts WHERE id = ?", postID)
 
-	var u string
+	var u null.String
 	if err := q.Scan(&u); err != nil {
 		return wrapPostErr(nil, err, "Failed to scan post's owner")
 	}
 
 	// Make sure the user performing this action is either the poster of the
 	// post being deleted or an administrator.
-	if err := d.IsUserOrHasPermOver(PermissionAdministrator, u); err != nil {
+	if err := d.IsUserOrHasPermOver(PermissionAdministrator, string(u)); err != nil {
 		return err
 	}
 

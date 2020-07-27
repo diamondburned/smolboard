@@ -7,9 +7,39 @@ import (
 	"fmt"
 	"mime"
 	"strconv"
+	"strings"
+	"unicode"
 
 	"github.com/diamondburned/smolboard/server/httperr"
+	"github.com/mattn/go-shellwords"
 )
+
+// NameIsLegal returns whether or not name contains illegal characters. It
+// returns nil if the name does not contain any.
+//
+// Legal runes include: digits, letters, an underscore and a dash.
+func NameIsLegal(name string) error {
+	if name == "" {
+		return ErrIllegalName
+	}
+
+	// testDigitLetter tests if a rune is not a digit or letter. It returns true
+	// if that is the case.
+	illi := strings.LastIndexFunc(name, func(r rune) bool {
+		return !(unicode.IsDigit(r) || unicode.IsLetter(r) || r == '_')
+	})
+	if illi > -1 {
+		return ErrIllegalName
+	}
+
+	return nil
+}
+
+// ErrResponse is the structure of the response when the request returns an
+// error.
+type ErrResponse struct {
+	Error string `json:"error"`
+}
 
 type Permission int8
 
@@ -119,18 +149,134 @@ type PostWithTags struct {
 }
 
 type PostTag struct {
-	PostID  int64  `json:"post_id"  db:"postid"`
-	TagName string `json:"tag_name" db:"tagname"`
-	Count   int    `json:"count"    db:"-"`
+	PostID  int64  `db:"postid"  json:"post_id,omitempty"`
+	TagName string `db:"tagname" json:"tag_name,omitempty"`
+	Count   int    `db:"-"       json:"count,omitempty"`
 }
 
 const MaxTagLen = 256
 
 var (
 	ErrEmptyTag        = httperr.New(400, "empty tag not allowed")
+	ErrIllegalTag      = httperr.New(400, "tag contains illegal character")
 	ErrTagTooLong      = httperr.New(400, "tag is too long")
 	ErrTagAlreadyAdded = httperr.New(400, "tag is already added")
 )
+
+// TagIsValid returns nil if the tag is valid else an error. A tag is invalid if
+// it's empty, it's longer than 256 bytes, it's prefixed with an at sign "@" or
+// it contains anything not a graphical character defined by the Unicode
+// standards.
+func TagIsValid(tagName string) error {
+	if tagName == "" {
+		return ErrEmptyTag
+	}
+	if len(tagName) > 256 {
+		return ErrTagTooLong
+	}
+
+	if strings.HasPrefix(tagName, "@") {
+		return ErrIllegalTag
+	}
+
+	illi := strings.LastIndexFunc(tagName, func(r rune) bool {
+		return !(unicode.IsGraphic(r))
+	})
+	if illi > -1 {
+		return ErrIllegalTag
+	}
+	return nil
+}
+
+// PostQuery represents the parsed query string. A zero-value PostQuery searches
+// for nothing and thus will list all posts.
+type PostQuery struct {
+	Poster string
+	Tags   []string
+}
+
+var (
+	ErrQueryAlreadyHasUser = httperr.New(400, "search query already has a user filter")
+)
+
+// AllPosts searches for all posts; it is a zero value instance of PostQuery.
+var AllPosts = PostQuery{}
+
+// ParsePostQuery parses a search string to query the post gallery. The syntax
+// is space-delimited optionally quoted tags with an optional prefix in front to
+// indicate a post author. A post author search may only appear once. Below is
+// an example:
+//
+//     tag1 "tag with space" 'more spaces' @diamondburned
+//
+func ParsePostQuery(q string) (PostQuery, error) {
+	// Fast path.
+	if q == "" {
+		return AllPosts, nil
+	}
+
+	words, err := shellwords.Parse(q)
+	if err != nil {
+		return AllPosts, httperr.Wrap(err, 400, "Invalid query")
+	}
+
+	var tags = words[:0]
+	var targetUser = ""
+
+	for _, word := range words {
+		if strings.HasPrefix(word, "@") {
+			// Disallow query with multiple users and error out.
+			if targetUser != "" {
+				return AllPosts, ErrQueryAlreadyHasUser
+			}
+
+			// Only allow non-empty mentions; ignore all random ats.
+			if user := strings.TrimPrefix(word, "@"); user != "" {
+				targetUser = user
+			}
+		} else {
+			// Make sure the tag is legal before re-adding.
+			if err := TagIsValid(word); err != nil {
+				return AllPosts, err
+			}
+			tags = append(tags, word)
+		}
+	}
+
+	return PostQuery{
+		Poster: targetUser,
+		Tags:   tags,
+	}, nil
+}
+
+var wordEscaper = strings.NewReplacer(`'`, `\'`)
+
+// String encodes the parsed PostQuery to a regular string query.
+func (q PostQuery) String() string {
+	var b strings.Builder
+
+	if q.Poster != "" {
+		b.WriteByte('@')
+		b.WriteString(q.Poster)
+		b.WriteByte(' ')
+	}
+
+	for i, tag := range q.Tags {
+		if i != 0 {
+			b.WriteByte(' ')
+		}
+
+		if strings.Contains(tag, " ") {
+			b.WriteByte('\'')
+			wordEscaper.WriteString(&b, tag)
+			b.WriteByte('\'')
+		} else {
+			b.WriteString(tag)
+		}
+	}
+
+	return b.String()
+}
 
 type Session struct {
 	ID       int64  `json:"-" db:"id"`

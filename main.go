@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/diamondburned/smolboard/smolboard"
+	"github.com/diamondburned/smolboard/server"
+	"github.com/go-chi/chi"
 	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"
 
@@ -17,6 +19,21 @@ import (
 var (
 	configGlob = "./config*.toml"
 )
+
+func stderrlnf(f string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, f+"\n", v...)
+}
+
+type Config struct {
+	Address string `toml:"address"`
+	server.Config
+}
+
+func NewConfig() Config {
+	return Config{
+		Config: server.NewConfig(),
+	}
+}
 
 func init() {
 	pflag.StringVarP(
@@ -34,10 +51,6 @@ func init() {
 	}
 }
 
-func stderrlnf(f string, v ...interface{}) {
-	fmt.Fprintf(os.Stderr, f+"\n", v...)
-}
-
 func main() {
 	pflag.Parse()
 
@@ -51,7 +64,7 @@ func main() {
 		log.Fatalln("Glob returns no matches.")
 	}
 
-	var cfg = smolboard.NewConfig()
+	var cfg = NewConfig()
 
 	for _, path := range d {
 		f, err := ioutil.ReadFile(path)
@@ -74,16 +87,29 @@ func main() {
 
 		fmt.Println()
 
-		if err := smolboard.CreateOwner(cfg, p); err != nil {
+		if err := server.CreateOwner(cfg.Config, p); err != nil {
 			log.Fatalln(err)
 		}
 
 	case "serve":
 		fallthrough
 	default:
+		a, err := server.New(cfg.Config)
+		if err != nil {
+			log.Fatalln("Failed to create instance:", err)
+		}
+
+		if cfg.Address == "" {
+			log.Fatalln("Missing field `address'")
+		}
+
+		mux := chi.NewMux()
+		mux.Mount("/api/v1", a)
+		mux.Mount("/", http.FileServer(http.Dir("./frontend/bin")))
+
 		log.Println("Starting listener at", cfg.Address)
 
-		if err := smolboard.ListenAndServe(cfg); err != nil {
+		if err := http.ListenAndServe(cfg.Address, mux); err != nil {
 			log.Fatalln("Failed to start:", err)
 		}
 	}

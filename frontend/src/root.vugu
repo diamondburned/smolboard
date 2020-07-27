@@ -1,0 +1,29 @@
+<div class="main-container">
+	<!-- <vg-comp expr="c.Header" /> -->
+
+	<main>
+		<vg-comp expr="c.Page" />
+	</main>
+
+	<vg-comp expr="c.Footer" />
+</div>
+
+<style>
+	div.main-container {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+	}
+
+	main {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: stretch;
+	}
+
+	main > * {
+		flex: 1;
+	}
+</style>

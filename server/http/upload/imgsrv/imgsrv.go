@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
@@ -44,12 +45,20 @@ func ServePost(r tx.Request) (interface{}, error) {
 	id, name := getStored(r)
 	log.Printf("id=%d,name=%q\n", id, name)
 
-	if err := r.Tx.CanViewPost(id); err != nil {
+	p, err := r.Tx.PostQuickGet(id)
+	if err != nil {
 		return nil, err
 	}
 
 	return func(w http.ResponseWriter) error {
-		http.ServeFile(w, r.Request, filepath.Join(r.Up.FileDirectory, name))
+		if filename := p.Filename(); filename != name {
+			redirect := path.Dir(r.URL.Path) + "/" + filename
+			// Cache the redirect for this specific endpoint.
+			http.Redirect(w, r.Request, redirect, http.StatusPermanentRedirect)
+		} else {
+			http.ServeFile(w, r.Request, filepath.Join(r.Up.FileDirectory, name))
+		}
+
 		return nil
 	}, nil
 }
@@ -64,11 +73,13 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 	id, name := getStored(r)
 	log.Printf("id=%d,name=%q\n", id, name)
 
-	if err := r.Tx.CanViewPost(id); err != nil {
+	p, err := r.Tx.PostQuickGet(id)
+	if err != nil {
 		return nil, err
 	}
 
 	return func(w http.ResponseWriter) error {
+		name = p.Filename()
 		t, err := imaging.FormatFromFilename(name)
 		if err != nil {
 			return httperr.Wrap(err, 400, "Failed to get format")

@@ -318,7 +318,8 @@ func testReadFailPermission(t *testing.T, d *Database,
 		t.Run("TryReadPost", func(t *testing.T) {
 			tx := testBeginTx(t, d, u.AuthToken)
 
-			if err := tx.CanViewPost(p.ID); !errors.Is(err, smolboard.ErrPostNotFound) {
+			_, err := tx.PostQuickGet(p.ID)
+			if !errors.Is(err, smolboard.ErrPostNotFound) {
 				t.Fatalf("Unexpected error viewing with deny permission %v: %v", perm, err)
 			}
 
@@ -327,6 +328,57 @@ func testReadFailPermission(t *testing.T, d *Database,
 			}
 		})
 	}
+}
+
+var _testPostTags = []string{
+	"1boy",
+	":o",
+	"armband",
+	"bangs",
+	"blue eyes",
+	"blush",
+	"bow",
+	"bowtie",
+	"brown sweater",
+	"buttons",
+	"collared shirt",
+	"dress shirt",
+	"eyebrows visible through hair",
+	"finger to cheek",
+	"grey skirt",
+	"hair between eyes",
+	"hair ribbon",
+	"long hair",
+	"long sleeves",
+	"looking at viewer",
+	"male focus",
+	"otoko no ko",
+	"parted bangs",
+	"pink background",
+	"pink hair",
+	"plaid",
+	"plaid skirt",
+	"pleated skirt",
+	"red bow",
+	"red neckwear",
+	"red ribbon",
+	"ribbon",
+	"school uniform",
+	"shiny",
+	"shiny hair",
+	"shirt",
+	"sidelocks",
+	"skirt",
+	"solo",
+	"sparkle background",
+	"standing",
+	"sweater",
+	"sweater vest",
+	"two side up",
+	"v-neck",
+	"white background",
+	"white shirt",
+	"wing collar",
 }
 
 func TestPostTags(t *testing.T) {
@@ -343,63 +395,16 @@ func TestPostTags(t *testing.T) {
 	}
 
 	// Insert some tags.
-	var tags = []string{
-		"1boy",
-		":o",
-		"armband",
-		"bangs",
-		"blue eyes",
-		"blush",
-		"bow",
-		"bowtie",
-		"brown sweater",
-		"buttons",
-		"collared shirt",
-		"dress shirt",
-		"eyebrows visible through hair",
-		"finger to cheek",
-		"grey skirt",
-		"hair between eyes",
-		"hair ribbon",
-		"long hair",
-		"long sleeves",
-		"looking at viewer",
-		"male focus",
-		"otoko no ko",
-		"parted bangs",
-		"pink background",
-		"pink hair",
-		"plaid",
-		"plaid skirt",
-		"pleated skirt",
-		"red bow",
-		"red neckwear",
-		"red ribbon",
-		"ribbon",
-		"school uniform",
-		"shiny",
-		"shiny hair",
-		"shirt",
-		"sidelocks",
-		"skirt",
-		"solo",
-		"sparkle background",
-		"standing",
-		"sweater",
-		"sweater vest",
-		"two side up",
-		"v-neck",
-		"white background",
-		"white shirt",
-		"wing collar",
-	}
+	var tags = _testPostTags
 
+	// Add
 	for _, tag := range tags {
 		if err := tx.TagPost(p.ID, tag); err != nil {
-			t.Fatal("Failed to tag post:", err)
+			t.Fatalf("Failed to tag %q post: %v", tag, err)
 		}
 	}
 
+	// Check exist
 	q, err := tx.Post(p.ID)
 	if err != nil {
 		t.Fatal("Failed to query post:", err)
@@ -418,10 +423,39 @@ func TestPostTags(t *testing.T) {
 		t.Fatal("Tags mismatch:", eq)
 	}
 
+	// Check collision
 	if err := tx.TagPost(p.ID, ":o"); !errors.Is(err, smolboard.ErrTagAlreadyAdded) {
 		t.Fatal("Unexpected error adding duplicate tag:", err)
 	}
 
+	// Search
+	s, err := tx.SearchTag("sh")
+	if err != nil {
+		t.Fatal("Failed to search:", err)
+	}
+
+	if len(s) != 3 {
+		t.Fatal("Invalid search length:", len(s))
+	}
+
+Search:
+	for _, tag := range []string{"shiny", "shiny hair", "shirt"} {
+		for _, search := range s {
+			if search.TagName == tag {
+				continue Search
+			}
+		}
+
+		t.Errorf("Tag %q not found in search", tag)
+	}
+
+	for _, search := range s {
+		if search.Count != 1 {
+			t.Errorf("Searched tag %q has wrong count %d", search.TagName, search.Count)
+		}
+	}
+
+	// Delete tags
 	for _, old := range tags {
 		if err := tx.UntagPost(p.ID, old); err != nil {
 			t.Fatal("Failed to untag:", err)
@@ -440,4 +474,76 @@ func TestPostTags(t *testing.T) {
 	if len(q.Tags) > 0 {
 		t.Fatal("Tags found that should've been untagged:", q.Tags)
 	}
+}
+
+func TestPostSearch(t *testing.T) {
+	d := newTestDatabase(t)
+
+	owner := testNewOwner(t, d, "ひめありかわ", "password")
+
+	tx := testBeginTx(t, d, owner.AuthToken)
+
+	p := NewEmptyPost("image/png")
+
+	if err := tx.SavePost(&p); err != nil {
+		t.Fatal("Failed to save post:", err)
+	}
+
+	// Insert some tags.
+	var tags = _testPostTags
+
+	// Add
+	for _, tag := range tags {
+		if err := tx.TagPost(p.ID, tag); err != nil {
+			t.Fatalf("Failed to tag %q post: %v", tag, err)
+		}
+	}
+
+	sliceEq := func(t *testing.T, s []smolboard.Post) {
+		t.Helper()
+
+		if len(s) != 1 {
+			t.Fatal("Invalid posts found with valid search query:", s)
+		}
+
+		if eq := deep.Equal(p, s[0]); eq != nil {
+			t.Fatal("Returned post is different:", eq)
+		}
+	}
+
+	t.Run("Author", func(t *testing.T) {
+		s, err := tx.PostSearch("@ひめありかわ", 25, 0)
+		if err != nil {
+			t.Fatal("Failed to search:", err)
+		}
+
+		sliceEq(t, s)
+	})
+
+	t.Run("Tags", func(t *testing.T) {
+		s, err := tx.PostSearch(`"otoko no ko" blush skirt`, 25, 0)
+		if err != nil {
+			t.Fatal("Failed to search:", err)
+		}
+
+		sliceEq(t, s)
+	})
+
+	t.Run("AuthorAndTags", func(t *testing.T) {
+		s, err := tx.PostSearch(`"otoko no ko" blush @ひめありかわ skirt`, 25, 0)
+		if err != nil {
+			t.Fatal("Failed to search:", err)
+		}
+
+		sliceEq(t, s)
+	})
+
+	t.Run("Empty", func(t *testing.T) {
+		s, err := tx.PostSearch("", 25, 0)
+		if err != nil {
+			t.Fatal("Failed to search:", err)
+		}
+
+		sliceEq(t, s)
+	})
 }

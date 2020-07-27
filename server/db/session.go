@@ -99,6 +99,10 @@ func (d *Transaction) newSession(username, userAgent string) (*smolboard.Session
 // UserAgent will be used for listing sessions. This function returns an
 // authenticate token.
 func (d *Transaction) Signin(user, pass, UA string) (*smolboard.Session, error) {
+	if err := smolboard.NameIsLegal(user); err != nil {
+		return nil, err
+	}
+
 	r := d.QueryRow("SELECT passhash FROM users WHERE username = ?", user)
 
 	var passhash []byte

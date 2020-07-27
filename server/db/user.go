@@ -2,8 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"strings"
-	"unicode"
 
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/pkg/errors"
@@ -26,8 +24,8 @@ func VerifyPassword(hash []byte, password string) error {
 // username that's inserted into the database is guaranteed to be the same as
 // the argument.
 func (d *Transaction) createUser(username, password string, perm smolboard.Permission) error {
-	if !nameAllowed(username) {
-		return smolboard.ErrIllegalName
+	if err := smolboard.NameIsLegal(username); err != nil {
+		return err
 	}
 
 	if len(password) < smolboard.MinimumPassLength {
@@ -55,7 +53,8 @@ func (d *Transaction) createUser(username, password string, perm smolboard.Permi
 
 // User returns the user WITHOUT the passhash.
 func (d *Transaction) User(username string) (*smolboard.UserPart, error) {
-	if !nameAllowed(username) {
+	if err := smolboard.NameIsLegal(username); err != nil {
+		// Illegal name is a non-existent name.
 		return nil, smolboard.ErrUserNotFound
 	}
 
@@ -125,18 +124,4 @@ func (d *Transaction) DeleteUser(username string) error {
 
 	_, err := d.Exec("DELETE FROM users WHERE username = ?", username)
 	return err
-}
-
-func nameAllowed(name string) bool {
-	if name == "" {
-		return false
-	}
-
-	return strings.LastIndexFunc(name, testDigitLetter) == -1
-}
-
-// testDigitLetter tests if a rune is not a digit or letter. It returns true if
-// that is the case.
-func testDigitLetter(r rune) bool {
-	return !(unicode.IsDigit(r) || unicode.IsLetter(r))
 }

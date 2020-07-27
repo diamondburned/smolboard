@@ -54,7 +54,7 @@ var migrations = []string{`
 		postid  INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
 		tagname TEXT    NOT NULL,
 		-- Prevent multiple of the same tags from appearing in one post.
-		UNIQUE (postid, tagname)
+		UNIQUE (postid, tagname COLLATE NOCASE)
 	);
 `}
 

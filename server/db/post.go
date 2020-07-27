@@ -2,8 +2,10 @@ package db
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/diamondburned/smolboard/smolboard"
+	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 )
 
@@ -15,9 +17,23 @@ func NewEmptyPost(ctype string) smolboard.Post {
 	}
 }
 
+// PostSearch parses the query string and returns the searched posts.
+func (d *Transaction) PostSearch(q string, count, page uint) ([]smolboard.Post, error) {
+	p, err := smolboard.ParsePostQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	return d.posts(p, count, page)
+}
+
 // Posts returns the list of posts that's paginated. Count represents the limit
 // for each page and page represents the page offset 0-indexed.
 func (d *Transaction) Posts(count, page uint) ([]smolboard.Post, error) {
+	return d.posts(smolboard.AllPosts, count, page)
+}
+
+func (d *Transaction) posts(pq smolboard.PostQuery, count, page uint) ([]smolboard.Post, error) {
 	p, err := d.Permission()
 	if err != nil {
 		return nil, err
@@ -28,16 +44,48 @@ func (d *Transaction) Posts(count, page uint) ([]smolboard.Post, error) {
 		return nil, smolboard.ErrPageCountLimit
 	}
 
-	offset := count * page
+	// The worst-case benchmark showed this sqlx.In query building step to take
+	// roughly 51 microseconds (us).
 
-	q, err := d.Queryx(
-		// This query does an explicit OR check to make sure the poster can
-		// always see their posts regardless of the post's permission.
-		"SELECT * FROM posts WHERE (poster = ? OR permission <= ?) ORDER BY id DESC LIMIT ?, ?",
-		// SQL is dumb and wants LIMIT (offset), (count) for some reason.
-		d.Session.Username, p, offset, count,
-	)
+	// Separate the query header to conditionally
+	query := strings.Builder{}
+	query.WriteString("SELECT posts.* FROM posts ")
 
+	// This query does an explicit OR check to make sure the poster can
+	// always see their posts regardless of the post's permission.
+	where := strings.Builder{}
+	where.WriteString("WHERE (posts.poster = ? OR posts.permission <= ?) ")
+
+	// muh optimization
+	args := make([]interface{}, 2, 6)
+	args[0] = d.Session.Username
+	args[1] = p
+
+	if pq.Poster != "" {
+		where.WriteString("AND posts.poster = ? ")
+		args = append(args, pq.Poster)
+	}
+
+	if len(pq.Tags) > 0 {
+		// In order to search for tags, we'll need to join these tables.
+		query.WriteString("JOIN posttags ON posttags.postid = posts.id ")
+		// Query using the above joins.
+		where.WriteString("AND posttags.tagname IN (?) ")
+		args = append(args, pq.Tags)
+	}
+
+	// Append the final pagination query. SQL is dumb and wants LIMIT (offset),
+	// (count) for some reason.
+	query.WriteString(where.String())
+	query.WriteString("GROUP BY posts.id ORDER BY posts.id DESC LIMIT ?, ?")
+	args = append(args, count*page, count)
+
+	qstring, inargs, err := sqlx.In(query.String(), args...)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to construct SQL IN query")
+	}
+
+	q, err := d.Queryx(qstring, inargs...)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to query for posts")
 	}
@@ -59,36 +107,35 @@ func (d *Transaction) Posts(count, page uint) ([]smolboard.Post, error) {
 	return posts, nil
 }
 
-// CanViewPost returns nil if the current user can view a post.
-func (d *Transaction) CanViewPost(id int64) error {
+// PostQuickGet gets a normal post instance. This function is used primarily
+// internally, but exported for local use.
+func (d *Transaction) PostQuickGet(id int64) (*smolboard.Post, error) {
 	// Fast path: ignore invalid IDs.
 	if id == 0 {
-		return smolboard.ErrPostNotFound
+		return nil, smolboard.ErrPostNotFound
 	}
 
 	p, err := d.Permission()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Check if the post is there with the given constraints.
 	r := d.QueryRowx(
-		"SELECT COUNT(1) FROM posts WHERE id = ? AND (poster = ? OR permission <= ?) LIMIT 1",
+		"SELECT * FROM posts WHERE id = ? AND (poster = ? OR permission <= ?) LIMIT 1",
 		id, d.Session.Username, p,
 	)
 
-	// COUNT(1) never returns no rows, so we use this number to check.
-	var count int
+	var post smolboard.Post
 
-	if err := r.Scan(&count); err != nil {
-		return errors.Wrap(err, "Failed to check post")
+	if err := r.StructScan(&post); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, smolboard.ErrPostNotFound
+		}
+		return nil, errors.Wrap(err, "Failed to check post")
 	}
 
-	if count == 0 {
-		return smolboard.ErrPostNotFound
-	}
-
-	return nil
+	return &post, nil
 }
 
 // Post returns a single post with the ID. It returns a post not found error if
@@ -123,14 +170,18 @@ func (d *Transaction) Post(id int64) (*smolboard.PostWithTags, error) {
 
 	var tags = []smolboard.PostTag{}
 
-	t, err := d.Queryx(
-		"SELECT tagname FROM posttags WHERE postid = ? ORDER BY tagname ASC",
+	t, err := d.Queryx(`
+		SELECT COUNT(1), posttags.tagname FROM posttags
+		JOIN   posttags AS posttags2 ON posttags2.tagname = posttags.tagname
+		WHERE  posttags2.postid = ?
+		GROUP  BY posttags.tagname
+		ORDER  BY posttags.tagname ASC`,
 		id,
 	)
 	if err != nil {
 		// If we have no rows, then just return the post only.
 		if errors.Is(err, sql.ErrNoRows) {
-			return &smolboard.PostWithTags{post, tags}, nil
+			return &smolboard.PostWithTags{Post: post, Tags: tags}, nil
 		}
 
 		return nil, errors.Wrap(err, "Failed to get tags")
@@ -138,23 +189,11 @@ func (d *Transaction) Post(id int64) (*smolboard.PostWithTags, error) {
 
 	defer t.Close()
 
-	// Prepared query for the sum of any tag.
-	s, err := d.Prepare("SELECT COUNT(postid) FROM posttags WHERE tagname = ?")
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to prepare count statement")
-	}
-
-	defer s.Close()
-
 	for t.Next() {
 		tag := smolboard.PostTag{PostID: id}
 
-		if err := t.Scan(&tag.TagName); err != nil {
+		if err := t.Scan(&tag.Count, &tag.TagName); err != nil {
 			return nil, errors.Wrap(err, "Failed to scan tag")
-		}
-
-		if err := s.QueryRow(tag.TagName).Scan(&tag.Count); err != nil {
-			return nil, errors.Wrap(err, "Failed to count tag")
 		}
 
 		tags = append(tags, tag)
@@ -244,13 +283,46 @@ func (d *Transaction) SetPostPermission(id int64, target smolboard.Permission) e
 }
 
 func validTag(tag string) error {
-	if tag == "" {
-		return smolboard.ErrEmptyTag
+	return smolboard.TagIsValid(tag)
+}
+
+// SearchTag searches for tags and returns at max 25 tags. It returns only the
+// count and name.
+func (d *Transaction) SearchTag(part string) ([]smolboard.PostTag, error) {
+	// A partial tag should still be valid.
+	if err := validTag(part); err != nil {
+		return nil, err
 	}
-	if len(tag) > 256 {
-		return smolboard.ErrTagTooLong
+
+	// SQL queries like these aren't the brightest idea.
+	t, err := d.Queryx(`
+		SELECT COUNT(1), posttags.tagname FROM posttags
+		JOIN   posttags AS posttags2 ON posttags2.tagname = posttags.tagname
+		WHERE  posttags2.tagname LIKE ? || '%'
+		GROUP  BY posttags.tagname
+		ORDER  BY COUNT(1) DESC
+		LIMIT  25`,
+		part,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to query tags")
 	}
-	return nil
+
+	defer t.Close()
+
+	var tags = []smolboard.PostTag{}
+
+	for t.Next() {
+		tag := smolboard.PostTag{}
+
+		if err := t.Scan(&tag.Count, &tag.TagName); err != nil {
+			return nil, errors.Wrap(err, "Failed to scan tag")
+		}
+
+		tags = append(tags, tag)
+	}
+
+	return tags, nil
 }
 
 func (d *Transaction) TagPost(postID int64, tag string) error {

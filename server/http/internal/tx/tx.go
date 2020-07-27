@@ -159,12 +159,6 @@ func render(w http.ResponseWriter, v interface{}) {
 	}
 }
 
-// ErrResponse is the structure of the response when the request returns an
-// error.
-type ErrResponse struct {
-	Error string `json:"error"`
-}
-
 func RenderWrap(w http.ResponseWriter, err error, code int, wrap string) {
 	RenderError(w, httperr.Wrap(err, code, wrap))
 }
@@ -173,7 +167,7 @@ func RenderError(w http.ResponseWriter, err error) {
 	code := httperr.ErrCode(err)
 	w.WriteHeader(code)
 
-	var jsonError = ErrResponse{
+	var jsonError = smolboard.ErrResponse{
 		Error: err.Error(),
 	}
 

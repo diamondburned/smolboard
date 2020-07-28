@@ -63,15 +63,19 @@ func TestPosts(t *testing.T) {
 				t.Fatal("Unexpected error fetching posts:", err)
 			}
 
-			if len(p) == 0 {
+			if p.Total != len(posts) {
+				t.Fatal("Mismatch sum count:", p.Total)
+			}
+
+			if len(p.Posts) == 0 {
 				break
 			}
 
-			total += len(p)
+			total += len(p.Posts)
 			start := i * 10
 			end := start + 10
 
-			if eq := deep.Equal(p, posts[start:end]); eq != nil {
+			if eq := deep.Equal(p.Posts, posts[start:end]); eq != nil {
 				t.Fatal("First page mismatch:", eq)
 			}
 		}
@@ -113,10 +117,14 @@ func TestPosts(t *testing.T) {
 			t.Fatal("Failed to get first 20 posts as normal user:", err)
 		}
 
+		if p.Total != 230 {
+			t.Fatal("Invalid sum count != 230:", p.Total)
+		}
+
 		// Make sure that the first 20 posts are hidden properly. If this is the
 		// case, then the next 20 posts should perfectly match.
-		if eq := deep.Equal(p, posts[20:40]); eq != nil {
-			t.Fatalf("Unexpected posts difference (len %d != 20): %q", len(p), eq)
+		if eq := deep.Equal(p.Posts, posts[20:40]); eq != nil {
+			t.Fatalf("Unexpected posts difference (len %d != 20): %q", len(p.Posts), eq)
 		}
 
 		// We don't need to test for trusted and admin, as they should work if
@@ -178,7 +186,7 @@ func TestNormalUploadedPosts(t *testing.T) {
 			t.Fatal("Failed to get all posts:", err)
 		}
 
-		if eq := deep.Equal(p, posts); eq != nil {
+		if eq := deep.Equal(p.Posts, posts); eq != nil {
 			t.Fatal("Posts inequality:", eq)
 		}
 	})
@@ -499,14 +507,18 @@ func TestPostSearch(t *testing.T) {
 		}
 	}
 
-	sliceEq := func(t *testing.T, s []smolboard.Post) {
+	sliceEq := func(t *testing.T, s smolboard.SearchResults) {
 		t.Helper()
 
-		if len(s) != 1 {
+		if s.Total != 1 {
+			t.Fatal("Invalid total:", s.Total)
+		}
+
+		if len(s.Posts) != 1 {
 			t.Fatal("Invalid posts found with valid search query:", s)
 		}
 
-		if eq := deep.Equal(p, s[0]); eq != nil {
+		if eq := deep.Equal(p, s.Posts[0]); eq != nil {
 			t.Fatal("Returned post is different:", eq)
 		}
 	}

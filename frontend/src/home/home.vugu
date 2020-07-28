@@ -1,7 +1,7 @@
 <section class="home">
 	<div class="banner">
-		<h1><a href="/posts">smolboard</a></h1>
-		<a href="/posts">Posts</a>
+		<h1><a @click='c.Navigate("/posts", nil)'>smolboard</a></h1>
+		<a @click='c.Navigate("/posts", nil)'>Posts</a>
 	</div>
 	<vg-comp expr="c.PostSearch" />
 </section>

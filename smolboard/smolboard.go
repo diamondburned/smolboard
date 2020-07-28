@@ -188,9 +188,9 @@ func TagIsValid(tagName string) error {
 	return nil
 }
 
-// PostQuery represents the parsed query string. A zero-value PostQuery searches
+// Query represents the parsed query string. A zero-value PostQuery searches
 // for nothing and thus will list all posts.
-type PostQuery struct {
+type Query struct {
 	Poster string
 	Tags   []string
 }
@@ -200,7 +200,18 @@ var (
 )
 
 // AllPosts searches for all posts; it is a zero value instance of PostQuery.
-var AllPosts = PostQuery{}
+var AllPosts = Query{}
+
+// SearchResults is the results returned from the queried posts.
+type SearchResults struct {
+	// Total is the total number of
+	Total int    `json:"total"`
+	Posts []Post `json:"posts"`
+}
+
+// NoResults contains no search results; it is a zero value instance of
+// PostQueryResults.
+var NoResults = SearchResults{}
 
 // ParsePostQuery parses a search string to query the post gallery. The syntax
 // is space-delimited optionally quoted tags with an optional prefix in front to
@@ -209,7 +220,7 @@ var AllPosts = PostQuery{}
 //
 //     tag1 "tag with space" 'more spaces' @diamondburned
 //
-func ParsePostQuery(q string) (PostQuery, error) {
+func ParsePostQuery(q string) (Query, error) {
 	// Fast path.
 	if q == "" {
 		return AllPosts, nil
@@ -243,7 +254,7 @@ func ParsePostQuery(q string) (PostQuery, error) {
 		}
 	}
 
-	return PostQuery{
+	return Query{
 		Poster: targetUser,
 		Tags:   tags,
 	}, nil
@@ -252,7 +263,7 @@ func ParsePostQuery(q string) (PostQuery, error) {
 var wordEscaper = strings.NewReplacer(`'`, `\'`)
 
 // String encodes the parsed PostQuery to a regular string query.
-func (q PostQuery) String() string {
+func (q Query) String() string {
 	var b strings.Builder
 
 	if q.Poster != "" {

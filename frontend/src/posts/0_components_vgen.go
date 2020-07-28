@@ -22,13 +22,29 @@ func (c *Posts) Build(vgin *vugu.BuildIn) (vgout *vugu.BuildOut) {
 		_ = vgparent
 		vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t"}
 		vgparent.AppendChild(vgn)
-		vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "h1", Attr: []vugu.VGAttribute(nil)}
-		vgparent.AppendChild(vgn)
-		{
-			vgparent := vgn
-			_ = vgparent
-			vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "bruh"}
+		for vgiterkeyt, item := range c.Items {
+			var vgiterkey interface{} = vgiterkeyt
+			_ = vgiterkey
+			item := item
+			_ = item
+			vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "a", Attr: []vugu.VGAttribute(nil)}
 			vgparent.AppendChild(vgn)
+			vgn.DOMEventHandlerSpecList = append(vgn.DOMEventHandlerSpecList, vugu.DOMEventHandlerSpec{
+				EventType:	"click",
+				Func:		func(event vugu.DOMEvent) { c.GoTo(item) },
+				// TODO: implement capture, etc. mostly need to decide syntax
+			})
+			{
+				vgparent := vgn
+				_ = vgparent
+				vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t\t"}
+				vgparent.AppendChild(vgn)
+				vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "img", Attr: []vugu.VGAttribute{vugu.VGAttribute{Namespace: "", Key: "class", Val: "post"}, vugu.VGAttribute{Namespace: "", Key: "loading", Val: "lazy"}}}
+				vgparent.AppendChild(vgn)
+				vgn.AddAttrInterface("style", c.BackgroundImage(item))
+				vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t"}
+				vgparent.AppendChild(vgn)
+			}
 		}
 		vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n"}
 		vgparent.AppendChild(vgn)

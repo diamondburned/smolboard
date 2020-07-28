@@ -51,20 +51,21 @@ func preparseMultipart(next http.Handler) http.Handler {
 	})
 }
 
-// Pagination is the URL parameter for post listing pagination.
-type Pagination struct {
-	Count uint `schema:"c"`
-	Page  uint `schema:"p"`
+// ListParams is the URL parameter for post listing pagination.
+type ListParams struct {
+	Query string `schema:"q"`
+	Count uint   `schema:"c"`
+	Page  uint   `schema:"p"`
 }
 
 func ListPosts(r tx.Request) (interface{}, error) {
-	var page = Pagination{Count: 24}
+	var params = ListParams{Count: 24}
 
-	if err := form.Unmarshal(r, &page); err != nil {
+	if err := form.Unmarshal(r, &params); err != nil {
 		return nil, httperr.Wrap(err, 400, "Invalid form")
 	}
 
-	return r.Tx.Posts(page.Count, page.Page)
+	return r.Tx.PostSearch(params.Query, params.Count, params.Page)
 }
 
 func GetPost(r tx.Request) (interface{}, error) {

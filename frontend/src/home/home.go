@@ -1,14 +1,16 @@
 package home
 
-import "github.com/vugu/vugu"
+import (
+	"github.com/vugu/vgrouter"
+	"github.com/vugu/vugu"
+)
 
 type Home struct {
+	vgrouter.NavigatorRef
 	Input      string
 	PostSearch vugu.Builder
 }
 
-func NewHome(postsearch vugu.Builder) *Home {
-	return &Home{
-		PostSearch: postsearch,
-	}
+func NewHome() *Home {
+	return &Home{}
 }

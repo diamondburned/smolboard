@@ -1,15 +1,21 @@
 package postsearch
 
-type Controller interface {
-	SearchPosts(input string)
-}
+import (
+	"net/url"
+
+	"github.com/vugu/vgrouter"
+)
 
 type PostSearch struct {
-	ctrl Controller
+	vgrouter.NavigatorRef
 }
 
-func NewPostSearch(ctrl Controller) *PostSearch {
-	return &PostSearch{
-		ctrl: ctrl,
-	}
+func NewPostSearch() *PostSearch {
+	return &PostSearch{}
+}
+
+func (ps *PostSearch) Search(input string) {
+	ps.Navigate("/posts", url.Values{
+		"q": {input},
+	})
 }

@@ -2,7 +2,13 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/diamondburned/smolboard/client"
+	"github.com/diamondburned/smolboard/frontend/src/home"
+	"github.com/diamondburned/smolboard/frontend/src/posts"
 	"github.com/pkg/errors"
 	"github.com/vugu/vgrouter"
 	"github.com/vugu/vugu"
@@ -14,9 +20,14 @@ type App struct {
 	Router   *vgrouter.Router
 	BuildEnv *vugu.BuildEnv
 	Renderer *domrender.JSRenderer
+
+	Session *client.Session
+
+	// vugu is trash so we need this
+	draw chan struct{}
 }
 
-func NewApp() (*App, error) {
+func NewApp(s *client.Session) (*App, error) {
 	buildEnv, err := vugu.NewBuildEnv()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create build env")
@@ -40,32 +51,73 @@ func NewApp() (*App, error) {
 		}
 	})
 
-	root := NewRoot()
-	buildEnv.WireComponent(root)
-
-	return &App{
-		Root:     root,
+	app := &App{
 		Router:   router,
 		BuildEnv: buildEnv,
 		Renderer: renderer,
-	}, nil
-}
+		Session:  s,
+	}
 
-func (a *App) AddRoute(route string, fn func(rm *vgrouter.RouteMatch)) {
-	a.Router.MustAddRoute(route, vgrouter.RouteHandlerFunc(fn))
-}
-
-func (a *App) AddPage(route string, page vugu.Builder) {
-	a.AddRoute(route, func(rm *vgrouter.RouteMatch) {
-		a.SetPage(page)
+	// Stuff that changes in the router.
+	app.Root = NewRoot(Pages{
+		home.NewHome(),
+		posts.NewPosts(s),
 	})
+	buildEnv.WireComponent(app.Root)
+
+	router.MustAddRoute("/posts", vgrouter.RouteHandlerFunc(app.posts))
+	router.MustAddRouteExact("/", vgrouter.RouteHandlerFunc(
+		func(rm *vgrouter.RouteMatch) { app.Root.Page = app.Pages.Home },
+	))
+
+	return app, nil
 }
 
-func (a *App) SetPage(page vugu.Builder) {
-	a.Root.Page = page
+func (a *App) getLock() vugu.EventEnv {
+	return a.Renderer.EventEnv()
 }
 
-func (a *App) SearchPosts(input string) {}
+func (a *App) update(fn func()) {
+	env := a.getLock()
+	env.Lock()
+	fn()
+	env.UnlockRender()
+}
+
+func (a *App) posts(rm *vgrouter.RouteMatch) {
+	// If exact: /posts?... => show gallery
+	if rm.Exact {
+		a.Root.Page = a.Pages.Posts
+		a.Root.Busy = true
+
+		q := rm.Params.Get("q")
+		p, _ := strconv.Atoi(rm.Params.Get("p"))
+
+		go func() {
+			p, err := a.Session.PostSearch(q, 25, p)
+			if err != nil {
+				fmt.Println("Error searching post:", err)
+			}
+
+			time.Sleep(2 * time.Second)
+
+			a.update(func() {
+				a.Root.Busy = false
+				a.Pages.Posts.SetResults(p)
+			})
+		}()
+
+	} else {
+		// Grab the post ID.
+		idstring := strings.TrimPrefix(rm.Path, "/posts/")
+		id, err := strconv.Atoi(idstring)
+		if err != nil {
+			fmt.Println("Invalid ID:", err)
+		}
+
+		fmt.Println("Got ID:", id)
+	}
+}
 
 // Main starts the event loop.
 func (a *App) Main() error {

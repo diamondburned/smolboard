@@ -1,5 +1,7 @@
 <section class="posts">
-	<h1>bruh</h1>
+	<a vg-for='_, item := range c.Items' @click='c.GoTo(item)'>
+		<img class="post" loading="lazy" :style='c.BackgroundImage(item)' />
+	</a>
 </section>
 
 <style>

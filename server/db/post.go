@@ -18,10 +18,10 @@ func NewEmptyPost(ctype string) smolboard.Post {
 }
 
 // PostSearch parses the query string and returns the searched posts.
-func (d *Transaction) PostSearch(q string, count, page uint) ([]smolboard.Post, error) {
+func (d *Transaction) PostSearch(q string, count, page uint) (smolboard.SearchResults, error) {
 	p, err := smolboard.ParsePostQuery(q)
 	if err != nil {
-		return nil, err
+		return smolboard.NoResults, err
 	}
 
 	return d.posts(p, count, page)
@@ -29,82 +29,109 @@ func (d *Transaction) PostSearch(q string, count, page uint) ([]smolboard.Post, 
 
 // Posts returns the list of posts that's paginated. Count represents the limit
 // for each page and page represents the page offset 0-indexed.
-func (d *Transaction) Posts(count, page uint) ([]smolboard.Post, error) {
+func (d *Transaction) Posts(count, page uint) (smolboard.SearchResults, error) {
 	return d.posts(smolboard.AllPosts, count, page)
 }
 
-func (d *Transaction) posts(pq smolboard.PostQuery, count, page uint) ([]smolboard.Post, error) {
+func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.SearchResults, error) {
 	p, err := d.Permission()
 	if err != nil {
-		return nil, err
+		return smolboard.NoResults, err
 	}
 
 	// Limit count.
 	if count > 100 {
-		return nil, smolboard.ErrPageCountLimit
+		return smolboard.NoResults, smolboard.ErrPageCountLimit
 	}
 
 	// The worst-case benchmark showed this sqlx.In query building step to take
 	// roughly 51 microseconds (us).
 
 	// Separate the query header to conditionally
-	query := strings.Builder{}
-	query.WriteString("SELECT posts.* FROM posts ")
+	header := strings.Builder{}
+	header.WriteString("FROM posts ")
 
 	// This query does an explicit OR check to make sure the poster can
 	// always see their posts regardless of the post's permission.
-	where := strings.Builder{}
-	where.WriteString("WHERE (posts.poster = ? OR posts.permission <= ?) ")
+	footer := strings.Builder{}
+	footer.WriteString("WHERE (posts.poster = ? OR posts.permission <= ?) ")
 
 	// muh optimization
-	args := make([]interface{}, 2, 6)
-	args[0] = d.Session.Username
-	args[1] = p
+	footerArgs := make([]interface{}, 2, 6)
+	footerArgs[0] = d.Session.Username
+	footerArgs[1] = p
 
 	if pq.Poster != "" {
-		where.WriteString("AND posts.poster = ? ")
-		args = append(args, pq.Poster)
+		footer.WriteString("AND posts.poster = ? ")
+		footerArgs = append(footerArgs, pq.Poster)
 	}
 
 	if len(pq.Tags) > 0 {
 		// In order to search for tags, we'll need to join these tables.
-		query.WriteString("JOIN posttags ON posttags.postid = posts.id ")
+		header.WriteString("JOIN posttags ON posttags.postid = posts.id ")
 		// Query using the above joins.
-		where.WriteString("AND posttags.tagname IN (?) ")
-		args = append(args, pq.Tags)
+		footer.WriteString("AND posttags.tagname IN (?) ")
+		// Although post IDs are unique, since we're joining two tables, we'd
+		// want to group all the results.
+		footer.WriteString("GROUP BY posts.id ")
+		footerArgs = append(footerArgs, pq.Tags)
 	}
+
+	// Build the paginated query.
+	query := strings.Builder{}
+	query.WriteString("SELECT posts.* ")
+	query.WriteString(header.String())
+	query.WriteString(footer.String())
+	// Sort the ID decrementally, which is latest first.
+	query.WriteString("ORDER BY posts.id DESC ")
 
 	// Append the final pagination query. SQL is dumb and wants LIMIT (offset),
 	// (count) for some reason.
-	query.WriteString(where.String())
-	query.WriteString("GROUP BY posts.id ORDER BY posts.id DESC LIMIT ?, ?")
-	args = append(args, count*page, count)
+	query.WriteString("LIMIT ?, ?")
+	queryargs := append(footerArgs, count*page, count)
 
-	qstring, inargs, err := sqlx.In(query.String(), args...)
+	qstring, inargs, err := sqlx.In(query.String(), queryargs...)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to construct SQL IN query")
+		return smolboard.NoResults, errors.Wrap(err, "Failed to construct SQL IN query")
+	}
+
+	var results = smolboard.SearchResults{
+		Posts: []smolboard.Post{},
 	}
 
 	q, err := d.Queryx(qstring, inargs...)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to query for posts")
+		return smolboard.NoResults, errors.Wrap(err, "Failed to query for posts")
 	}
 
 	defer q.Close()
-
-	var posts = []smolboard.Post{}
 
 	for q.Next() {
 		var p smolboard.Post
 
 		if err := q.StructScan(&p); err != nil {
-			return nil, errors.Wrap(err, "Failed to scan post")
+			return smolboard.NoResults, errors.Wrap(err, "Failed to scan post")
 		}
 
-		posts = append(posts, p)
+		results.Posts = append(results.Posts, p)
 	}
 
-	return posts, nil
+	// Build the sum count query.
+	countq := strings.Builder{}
+	countq.WriteString("SELECT COUNT(DISTINCT posts.id) ")
+	countq.WriteString(header.String())
+	countq.WriteString(footer.String())
+
+	cstring, inargs, err := sqlx.In(countq.String(), footerArgs...)
+	if err != nil {
+		return smolboard.NoResults, errors.Wrap(err, "Failed to construct SQL IN query")
+	}
+
+	if err := d.QueryRow(cstring, inargs...).Scan(&results.Total); err != nil {
+		return smolboard.NoResults, errors.Wrap(err, "Failed to scan total posts found")
+	}
+
+	return results, nil
 }
 
 // PostQuickGet gets a normal post instance. This function is used primarily

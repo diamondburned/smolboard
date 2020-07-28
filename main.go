@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/diamondburned/smolboard/server"
@@ -103,6 +104,15 @@ func main() {
 			log.Fatalln("Missing field `address'")
 		}
 
+		// Build wasm if possible.
+		if s, err := os.Stat("frontend/"); err == nil && s.IsDir() {
+			log.Println("Building wasm frontend...")
+
+			sh(`cd frontend/src && \
+				go generate     && \
+				go build -o ../bin/main.wasm .`)
+		}
+
 		mux := chi.NewMux()
 		mux.Mount("/api/v1", a)
 		mux.Mount("/", http.FileServer(http.Dir("./frontend/bin")))
@@ -112,5 +122,20 @@ func main() {
 		if err := http.ListenAndServe(cfg.Address, mux); err != nil {
 			log.Fatalln("Failed to start:", err)
 		}
+	}
+}
+
+func sh(cmd string) {
+	c := exec.Command("sh", "-c", cmd)
+	c.Stdin = os.Stdin
+	c.Stderr = os.Stderr
+	c.Stdout = os.Stdout
+	c.Env = append(os.Environ(),
+		"GOOS=js",
+		"GOARCH=wasm",
+	)
+
+	if err := c.Run(); err != nil {
+		log.Fatalln(err)
 	}
 }

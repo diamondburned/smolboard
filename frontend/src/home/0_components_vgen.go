@@ -24,7 +24,48 @@ func (c *Home) Build(vgin *vugu.BuildIn) (vgout *vugu.BuildOut) {
 		vgparent.AppendChild(vgn)
 		vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "div", Attr: []vugu.VGAttribute{vugu.VGAttribute{Namespace: "", Key: "class", Val: "banner"}}}
 		vgparent.AppendChild(vgn)
-		vgn.SetInnerHTML(vugu.HTML("\n\t\t\x3Ch1\x3E\x3Ca href=\"/posts\"\x3Esmolboard\x3C/a\x3E\x3C/h1\x3E\n\t\t\x3Ca href=\"/posts\"\x3EPosts\x3C/a\x3E\n\t"))
+		{
+			vgparent := vgn
+			_ = vgparent
+			vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t\t"}
+			vgparent.AppendChild(vgn)
+			vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "h1", Attr: []vugu.VGAttribute(nil)}
+			vgparent.AppendChild(vgn)
+			{
+				vgparent := vgn
+				_ = vgparent
+				vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "a", Attr: []vugu.VGAttribute(nil)}
+				vgparent.AppendChild(vgn)
+				vgn.DOMEventHandlerSpecList = append(vgn.DOMEventHandlerSpecList, vugu.DOMEventHandlerSpec{
+					EventType:	"click",
+					Func:		func(event vugu.DOMEvent) { c.Navigate("/posts", nil) },
+					// TODO: implement capture, etc. mostly need to decide syntax
+				})
+				{
+					vgparent := vgn
+					_ = vgparent
+					vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "smolboard"}
+					vgparent.AppendChild(vgn)
+				}
+			}
+			vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t\t"}
+			vgparent.AppendChild(vgn)
+			vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "a", Attr: []vugu.VGAttribute(nil)}
+			vgparent.AppendChild(vgn)
+			vgn.DOMEventHandlerSpecList = append(vgn.DOMEventHandlerSpecList, vugu.DOMEventHandlerSpec{
+				EventType:	"click",
+				Func:		func(event vugu.DOMEvent) { c.Navigate("/posts", nil) },
+				// TODO: implement capture, etc. mostly need to decide syntax
+			})
+			{
+				vgparent := vgn
+				_ = vgparent
+				vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "Posts"}
+				vgparent.AppendChild(vgn)
+			}
+			vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t"}
+			vgparent.AppendChild(vgn)
+		}
 		vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t"}
 		vgparent.AppendChild(vgn)
 		{

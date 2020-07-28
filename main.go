@@ -104,18 +104,9 @@ func main() {
 			log.Fatalln("Missing field `address'")
 		}
 
-		// Build wasm if possible.
-		if s, err := os.Stat("frontend/"); err == nil && s.IsDir() {
-			log.Println("Building wasm frontend...")
-
-			sh(`cd frontend/src && \
-				go generate     && \
-				go build -o ../bin/main.wasm .`)
-		}
-
 		mux := chi.NewMux()
 		mux.Mount("/api/v1", a)
-		mux.Mount("/", http.FileServer(http.Dir("./frontend/bin")))
+		// mux.Mount("/", http.FileServer(http.Dir("./frontend/bin")))
 
 		log.Println("Starting listener at", cfg.Address)
 

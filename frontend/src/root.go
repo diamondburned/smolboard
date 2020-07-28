@@ -34,7 +34,7 @@ type Pages struct {
 func NewRoot(p Pages) *Root {
 	postSearch := postsearch.NewPostSearch()
 
-	// p.Home.PostSearch = postSearch
+	p.Home.PostSearch = postSearch
 	// p.Posts.PostSearch = postSearch
 
 	return &Root{

@@ -1,2 +1,3 @@
 *.test
 config.toml
+main.wasm

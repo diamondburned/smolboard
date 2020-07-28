@@ -39,8 +39,6 @@ func (c *Root) Build(vgin *vugu.BuildIn) (vgout *vugu.BuildOut) {
 					vgparent.AppendChild(vgn)
 				}
 			}
-			vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t"}
-			vgparent.AppendChild(vgn)
 		}
 		vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t"}
 		vgparent.AppendChild(vgn)

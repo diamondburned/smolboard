@@ -1,12 +1,6 @@
 <div vg-attr='c.MainAttrs()'>
 	<main>
-		<vg-comp expr="c.Page">
-			<!-- Embed a PostSearch and allow all components to show it. -->
-			<vg-slot name="PostSearch">
-				<!-- <vg-comp expr="parent.PostSearch"></vg-comp> -->
-				<p>Test</p>
-			</vg-slot>
-		</vg-comp>
+		<vg-comp expr="c.Page" />
 	</main>
 	<vg-comp expr="c.Footer" />
 </div>

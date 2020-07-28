@@ -138,7 +138,17 @@ func (p Post) Filename() string {
 		return sid
 	}
 
-	return sid + t[0]
+	// MIME's extensions are actually randomized once on runtime for some
+	// reason. We should manually sort the strings.
+	var fmt = t[0]
+	for _, ext := range t[1:] {
+		// Find the shortest extension and use it.
+		if ext < fmt && len(ext) < len(fmt) {
+			fmt = ext
+		}
+	}
+
+	return sid + fmt
 }
 
 // PostWithTags is the type for a post with queried tags.

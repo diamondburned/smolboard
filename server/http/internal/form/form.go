@@ -15,13 +15,13 @@ var decoder = schema.NewDecoder()
 
 // Unmarshal decodes the form in the given request into the interface.
 func Unmarshal(r tx.Request, v interface{}) error {
-	if err := r.ParseMultipartForm(MaxMemory); err != nil {
-		return errors.Wrap(err, "Failed to parse form")
+	// Prioritize multipart.
+	if err := r.ParseMultipartForm(MaxMemory); err == nil && r.MultipartForm != nil {
+		return decoder.Decode(v, r.MultipartForm.Value)
 	}
 
-	// Prioritize multipart.
-	if r.MultipartForm != nil {
-		return decoder.Decode(v, r.MultipartForm.Value)
+	if err := r.ParseForm(); err != nil {
+		return errors.Wrap(err, "Failed to parse form")
 	}
 
 	switch r.Method {

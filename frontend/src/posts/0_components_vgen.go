@@ -41,6 +41,7 @@ func (c *Posts) Build(vgin *vugu.BuildIn) (vgout *vugu.BuildOut) {
 				vgparent.AppendChild(vgn)
 				vgn = &vugu.VGNode{Type: vugu.VGNodeType(3), Namespace: "", Data: "img", Attr: []vugu.VGAttribute{vugu.VGAttribute{Namespace: "", Key: "class", Val: "post"}, vugu.VGAttribute{Namespace: "", Key: "loading", Val: "lazy"}}}
 				vgparent.AppendChild(vgn)
+				vgn.AddAttrInterface("src", c.Session.PostImageURL(item))
 				vgn.AddAttrInterface("style", c.BackgroundImage(item))
 				vgn = &vugu.VGNode{Type: vugu.VGNodeType(1), Data: "\n\t"}
 				vgparent.AppendChild(vgn)

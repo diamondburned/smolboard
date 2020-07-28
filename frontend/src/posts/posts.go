@@ -19,7 +19,7 @@ const (
 )
 
 var encoder = png.Encoder{
-	CompressionLevel: png.NoCompression,
+	CompressionLevel: png.DefaultCompression,
 }
 
 type Posts struct {
@@ -49,18 +49,17 @@ func (p *Posts) GoTo(post smolboard.Post) {
 func (p *Posts) BackgroundImage(post smolboard.Post) string {
 	if inline := BlurInlineImage(post); inline != "" {
 		return fmt.Sprintf(
-			"background-image: url('%s'), url(%s), url(%s)",
-			BlurInlineImage(post),
-			p.Session.PostThumbURL(post),
-			p.Session.PostImageURL(post),
+			"background-image: url(\"%s\")",
+			inline,
 		)
 	}
 
-	return fmt.Sprintf(
-		"background-image: url(%s), url(%s)",
-		p.Session.PostThumbURL(post),
-		p.Session.PostImageURL(post),
-	)
+	return ""
+	// return fmt.Sprintf(
+	// 	"background-image: url(%s), url(%s)",
+	// 	p.Session.PostThumbURL(post),
+	// 	p.Session.PostImageURL(post),
+	// )
 }
 
 func PostURL(post smolboard.Post) string {
@@ -90,7 +89,7 @@ func BlurInlineImage(post smolboard.Post) string {
 	}
 
 	return "data:image/png;base64," +
-		base64.RawURLEncoding.EncodeToString(buf.Bytes())
+		base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
 // from imgutil

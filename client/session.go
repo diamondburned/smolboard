@@ -71,5 +71,5 @@ func (s *Session) PostImageURL(post smolboard.Post) string {
 }
 
 func (s *Session) PostThumbURL(post smolboard.Post) string {
-	return fmt.Sprintf("%s%s/%s/thumb", s.Client.Endpoint(), "images", post.Filename())
+	return fmt.Sprintf("%s/%s/%s/thumb", s.Client.Endpoint(), "images", post.Filename())
 }

@@ -1,0 +1,19 @@
+main.home {
+	display: flex;
+
+	flex-direction:  column;
+	justify-content: center;
+
+	align-items: flex-start;
+	align-self:  center;
+}
+
+main.home h1 {
+	margin: 0;
+}
+
+main.home .banner {
+	margin-bottom: 16px;
+	margin-left:  1em;
+	margin-right: 1em;
+}

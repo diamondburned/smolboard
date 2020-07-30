@@ -1,0 +1,13 @@
+nav {
+	display: flex;
+	margin-bottom: 0;
+}
+
+nav h2 {
+	margin:  auto 0;
+	padding: 0;
+}
+
+nav h2 a {
+	padding: 0 8px;
+}

@@ -38,7 +38,8 @@ type Client struct {
 	host string
 }
 
-// NewClient makes a new client. Host is optional.
+// NewClient makes a new client. Host is optional. This client is HTTPS by
+// default.
 func NewClient(host string) *Client {
 	var client = &Client{
 		Client: http.Client{
@@ -71,6 +72,9 @@ func (c *Client) Host() string {
 func (c *Client) Endpoint() string {
 	if c.host == "" {
 		return "/api/v1"
+	}
+	if strings.HasPrefix(c.host, "http") {
+		return c.host + "/api/v1"
 	}
 	return fmt.Sprintf("https://%s/api/v1", c.host)
 }

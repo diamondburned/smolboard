@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/diamondburned/smolboard/frontend/frontserver"
 	"github.com/diamondburned/smolboard/server"
 	"github.com/go-chi/chi"
 	"github.com/spf13/pflag"
@@ -27,12 +28,14 @@ func stderrlnf(f string, v ...interface{}) {
 
 type Config struct {
 	Address string `toml:"address"`
+	frontserver.FrontConfig
 	server.Config
 }
 
 func NewConfig() Config {
 	return Config{
-		Config: server.NewConfig(),
+		FrontConfig: frontserver.NewConfig(),
+		Config:      server.NewConfig(),
 	}
 }
 
@@ -104,9 +107,14 @@ func main() {
 			log.Fatalln("Missing field `address'")
 		}
 
+		f, err := frontserver.New("http://"+cfg.Address, cfg.FrontConfig)
+		if err != nil {
+			log.Fatalln("Failed to create frontend:", err)
+		}
+
 		mux := chi.NewMux()
 		mux.Mount("/api/v1", a)
-		// mux.Mount("/", http.FileServer(http.Dir("./frontend/bin")))
+		mux.Mount("/", f)
 
 		log.Println("Starting listener at", cfg.Address)
 

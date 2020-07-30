@@ -1,0 +1,16 @@
+.search-input {
+	display: flex;
+}
+
+.search-input > * {
+	margin: calc(var(--universal-margin) / 2);
+}
+
+.search-input span[class^='icon-'] {
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 0.5em;
+    width: auto;
+    margin: auto;
+    display: block;
+}

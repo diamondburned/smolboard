@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="stylesheet" href="{{.Theme.URL}}">
+		<link rel="stylesheet" href="/static/components.css">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<meta property="og:site_name" content="{{ .Config.SiteName }}" />
+		<title>{{ .FormatTitle }}</title>
+
+		{{ with .Render.Title }}
+			<meta property="og:title" content="{{ . }}" />
+		{{ end }}
+		{{ with .Render.ImageURL }}
+			<meta property="og:image" content="{{ . }}" />
+		{{ end }}
+		{{ with .Render.Description }}
+			<meta property="og:description" content="{{ . }}" />
+		{{ end }}
+	</head>
+
+	<body>
+		{{ .Render.Body }}
+	</body>
+</html>

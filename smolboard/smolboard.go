@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"mime"
 	"strconv"
 	"strings"
 	"unicode"
@@ -133,22 +132,12 @@ func (p *Post) GetPoster() string {
 func (p Post) Filename() string {
 	var sid = strconv.FormatInt(p.ID, 10)
 
-	t, err := mime.ExtensionsByType(p.ContentType)
-	if err != nil || len(t) == 0 {
+	var parts = strings.Split(p.ContentType, "/")
+	if len(parts) < 2 {
 		return sid
 	}
 
-	// MIME's extensions are actually randomized once on runtime for some
-	// reason. We should manually sort the strings.
-	var fmt = t[0]
-	for _, ext := range t[1:] {
-		// Find the shortest extension and use it.
-		if ext < fmt && len(ext) < len(fmt) {
-			fmt = ext
-		}
-	}
-
-	return sid + fmt
+	return fmt.Sprintf("%s.%s", sid, parts[1])
 }
 
 // PostWithTags is the type for a post with queried tags.

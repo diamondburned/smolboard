@@ -1,0 +1,52 @@
+footer {
+	justify-content: space-between;
+	padding: var(--universal-padding) calc(2 * var(--universal-padding));
+	margin-bottom: -100px;
+	transition: cubic-bezier(0, 0, 0.38, 1) 150ms margin-bottom;
+	overflow: hidden;
+}
+
+footer:hover {
+	margin-bottom: 0;
+}
+
+footer * {
+	font-size: 0.9rem;
+}
+
+.theme-switcher {
+	text-align: end;
+	width: 100%;
+}
+
+.theme-switcher p {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+.theme-switcher div button:first-child {
+	margin-right: 0;
+}
+
+.theme-switcher div button:last-child {
+	margin-left: 0;
+}
+
+.theme-switcher button, .theme-switcher button:hover {
+	border: 1px solid var(--fore-color);
+}
+
+.theme-switcher button[value="light"] {
+	background: #F0F0F0;
+	color: #111111;
+}
+
+.theme-switcher button[value="dark"] {
+	background: #111111;
+	color: #FDFDFD;
+}
+
+.theme-switcher button[value="nord"] {
+	background: #ECEFF4;
+	color: #2E3440;
+}

@@ -2,6 +2,8 @@ module github.com/diamondburned/smolboard
 
 go 1.14
 
+replace github.com/bbrks/go-blurhash => github.com/diamondburned/go-blurhash v0.0.0-20200729185525-9fa9a8820d7f
+
 require (
 	github.com/bbrks/go-blurhash v0.0.0-20190629155354-b1b1c817265b
 	github.com/bwmarrin/snowflake v0.3.0
@@ -13,14 +15,16 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/gorilla/schema v1.1.0
 	github.com/jmoiron/sqlx v1.2.0
+	github.com/markbates/pkger v0.17.0
 	github.com/mattn/go-shellwords v1.0.10
 	github.com/mattn/go-sqlite3 v1.14.0
 	github.com/pelletier/go-toml v1.8.0
+	github.com/pixiv/go-libjpeg v0.0.0-20190822045933-3da21a74767d
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
-	github.com/vugu/vgrouter v0.0.0-20200725205318-eeb478c42e5d
-	github.com/vugu/vjson v0.0.0-20200505061711-f9cbed27d3d9
-	github.com/vugu/vugu v0.3.2
+	github.com/tdewolff/minify v2.3.6+incompatible
+	github.com/tdewolff/parse v2.3.4+incompatible // indirect
+	github.com/tdewolff/test v1.0.6 // indirect
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20200724161237-0e2f3a69832c // indirect

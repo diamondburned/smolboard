@@ -1,0 +1,21 @@
+.post.card {
+	width: auto;
+	margin-right: 0;
+	transition: linear 75ms;
+}
+
+.post.card:hover {
+	-webkit-filter: brightness(90%) contrast(110%);
+}
+
+.post a {
+	line-height: 0;
+	display: flex;
+	justify-content: center;
+}
+
+.post a > * {
+	height: 200px;
+	width:  auto;
+	max-width: 500px;
+}

@@ -1,0 +1,26 @@
+<div class="gallery">
+	{{ template "nav" .Config }}
+
+	<main class="posts row">
+		{{ range .Posts }}
+		<figure class="post card">
+			<a href="/posts/{{.ID}}">
+				{{      if (isImage .ContentType) }}
+				<img alt="Thumbnail" {{ $.ImageSizeAttr . }}
+					 src="{{ $.Session.PostThumbURL . }}"
+					 style="background-image: url('{{ $.InlineImage . }}')">
+				{{ else if (isVideo .ContentType) }}
+				<video preload="metadata" src="{{ $.InlineImage . }}#t=0.1" />
+				{{ else }}
+				<span>
+					<span class=".icon-link"></span>
+					{{ .ContentType }}
+				</span>
+				{{ end }}
+			</a>
+		</figure>
+		{{ end }}
+	</main>
+</div>
+
+{{ template "footer" }}

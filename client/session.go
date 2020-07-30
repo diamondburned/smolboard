@@ -14,8 +14,8 @@ type Session struct {
 
 // NewSession creates a new session with the given endpoint. It defaults to the
 // global variable if the given endpoint is empty.
-func NewSession(endpoint string) *Session {
-	return NewSessionWithClient(NewClient(endpoint))
+func NewSession(host string) *Session {
+	return NewSessionWithClient(NewClient(host))
 }
 
 // NewSessionWithClient creates a new session with a client. Refer to

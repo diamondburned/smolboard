@@ -1,0 +1,13 @@
+<nav>
+	<h2>
+		<a href="/posts">
+			{{ with .SiteName }}
+			{{ . }}
+			{{ else }}
+			smolboard
+			{{ end }}
+		</a>
+	</h2>
+
+	{{ template "search" }}
+</nav>

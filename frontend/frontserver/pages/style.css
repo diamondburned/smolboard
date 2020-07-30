@@ -1,0 +1,23 @@
+:root {
+	--universal-border-radius: 4px;
+}
+
+body {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+}
+
+body > main {
+	flex: 1;
+}
+
+form.seamless {
+    background: inherit;
+	color: inherit;
+    border: none;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+}

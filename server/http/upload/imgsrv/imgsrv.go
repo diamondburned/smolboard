@@ -15,7 +15,6 @@ import (
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/disintegration/imaging"
 	"github.com/go-chi/chi"
-	"github.com/pkg/errors"
 )
 
 // ThumbnailSize controls the dimension of the thumbnail.
@@ -79,39 +78,48 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 	}
 
 	return func(w http.ResponseWriter) error {
-		name = p.Filename()
-		t, err := imaging.FormatFromFilename(name)
-		if err != nil {
-			return httperr.Wrap(err, 400, "Failed to get format")
+		if !serveThumbnail(w, r, p.Filename()) {
+			redirect := path.Dir(r.URL.Path) // remove /thumb
+			// There will be no thumbnail for this post, ever.
+			http.Redirect(w, r.Request, redirect, http.StatusPermanentRedirect)
 		}
-
-		f, err := os.Open(filepath.Join(r.Up.FileDirectory, name))
-		if err != nil {
-			return errors.Wrap(err, "Failed to open file")
-		}
-		defer f.Close()
-
-		s, err := f.Stat()
-		if err != nil {
-			return errors.Wrap(err, "Failed to stat file")
-		}
-
-		i, err := imaging.Decode(f, imaging.AutoOrientation(true))
-		if err != nil {
-			return errors.Wrap(err, "Failed to decode image")
-		}
-
-		// Early close.
-		f.Close()
-
-		var img = imaging.Fit(i, ThumbnailSize, ThumbnailSize, imaging.Lanczos)
-		var buf bytes.Buffer
-
-		if err := imaging.Encode(&buf, img, t, encopts...); err != nil {
-			return errors.Wrap(err, "Failed to encode thumbnail")
-		}
-
-		http.ServeContent(w, r.Request, name, s.ModTime(), bytes.NewReader(buf.Bytes()))
+		// This never fails.
 		return nil
 	}, nil
+}
+
+func serveThumbnail(w http.ResponseWriter, r tx.Request, name string) bool {
+	t, err := imaging.FormatFromFilename(name)
+	if err != nil {
+		return false
+	}
+
+	f, err := os.Open(filepath.Join(r.Up.FileDirectory, name))
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+
+	s, err := f.Stat()
+	if err != nil {
+		return false
+	}
+
+	i, err := imaging.Decode(f, imaging.AutoOrientation(true))
+	if err != nil {
+		return false
+	}
+
+	// Early close.
+	f.Close()
+
+	var img = imaging.Fit(i, ThumbnailSize, ThumbnailSize, imaging.Lanczos)
+	var buf bytes.Buffer
+
+	if err := imaging.Encode(&buf, img, t, encopts...); err != nil {
+		return false
+	}
+
+	http.ServeContent(w, r.Request, name, s.ModTime(), bytes.NewReader(buf.Bytes()))
+	return true
 }

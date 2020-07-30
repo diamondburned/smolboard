@@ -12,7 +12,7 @@ maxBodySize = "1GB" # absolute max size including file name and form
 
 fileDirectory = "/tmp/smolboard-store/"
 maxFileSize   = "500MB" # absolute max file size
-allowedTypes  = [
+allowedTypes  = [       # will use the second part for file extension
 	# https://mimesniff.spec.whatwg.org/#matching-an-image-type-pattern
 	"image/jpeg", "image/png", "image/gif", "image/webp",
 	# https://mimesniff.spec.whatwg.org/#matching-an-audio-or-video-type-pattern
@@ -25,8 +25,8 @@ allowedTypes  = [
 #
 
 [MaxSize]
-"image"     = "10MB"
-"image/png" = "20MB"
-"image/gif" = "50MB"
-"video"     = "250MB"
-"video/mp4" = "500MB"
+ "image"     = "10MB"
+ "image/png" = "20MB"
+ "image/gif" = "50MB"
+ "video"     = "250MB"
+ "video/mp4" = "500MB"

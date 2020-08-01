@@ -14,8 +14,13 @@ type Session struct {
 
 // NewSession creates a new session with the given endpoint. It defaults to the
 // global variable if the given endpoint is empty.
-func NewSession(host string) *Session {
-	return NewSessionWithClient(NewClient(host))
+func NewSession(host string) (*Session, error) {
+	c, err := NewClient(host)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSessionWithClient(c), nil
 }
 
 // NewSessionWithClient creates a new session with a client. Refer to
@@ -39,6 +44,10 @@ func (s *Session) Signup(username, password, token string) (sm *smolboard.Sessio
 		"password": {password},
 		"token":    {token},
 	})
+}
+
+func (s *Session) Post(id int64) (p smolboard.PostWithTags, err error) {
+	return p, s.Client.Get(fmt.Sprintf("/posts/%d", id), &p, nil)
 }
 
 // Posts returns the paginated post list. Count is defaulted to 25.
@@ -66,10 +75,30 @@ func (s *Session) PostSearch(q string, count, page int) (p smolboard.SearchResul
 	})
 }
 
-func (s *Session) PostImageURL(post smolboard.Post) string {
+func (s *Session) PostDirectURL(post smolboard.Post) string {
 	return fmt.Sprintf("%s/%s/%s", s.Client.Endpoint(), "images", post.Filename())
 }
 
 func (s *Session) PostThumbURL(post smolboard.Post) string {
 	return fmt.Sprintf("%s/%s/%s/thumb", s.Client.Endpoint(), "images", post.Filename())
+}
+
+func (s *Session) TagPost(id int64, tag string) error {
+	if err := smolboard.TagIsValid(tag); err != nil {
+		return err
+	}
+
+	return s.Client.Post(fmt.Sprintf("/posts/%d/tags", id), nil, url.Values{
+		"t": {tag},
+	})
+}
+
+func (s *Session) UntagPost(id int64, tag string) error {
+	if err := smolboard.TagIsValid(tag); err != nil {
+		return err
+	}
+
+	return s.Client.Post(fmt.Sprintf("/posts/%d/tags", id), nil, url.Values{
+		"t": {tag},
+	})
 }

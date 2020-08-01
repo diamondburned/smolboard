@@ -1,0 +1,43 @@
+.post > .content {
+	display: flex;
+	flex: 1 1; /* Expand right-most elem */
+	flex-direction: row;
+}
+
+.post aside {
+	width: 100%;
+	max-width: 300px;
+}
+
+.post aside form {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 0;
+}
+
+.post aside form input {
+	height: 2em;
+}
+
+.post main {
+	margin: var(--universal-margin);
+	margin-left: 0;
+	line-height: 0;
+}
+
+.post main > * {
+	width: 100%;
+}
+
+@media (max-width: 600px) {
+	.post > .content {
+		flex-direction: column;
+	}
+	.post main {
+		margin-left: var(--universal-margin);
+	}
+	.post aside {
+		/* stretch all the way */
+		max-width: none;
+	}
+}

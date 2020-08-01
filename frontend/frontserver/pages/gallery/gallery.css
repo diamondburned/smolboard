@@ -1,21 +1,35 @@
-.post.card {
+.posts {
+	margin-left: var(--universal-margin);
+	margin-top:  var(--universal-margin);
+}
+
+.posts .post.card {
 	width: auto;
-	margin-right: 0;
+	margin-left: 0;
+	margin-top:  0;
 	transition: linear 75ms;
 }
 
-.post.card:hover {
+.posts .post.card:hover {
 	-webkit-filter: brightness(90%) contrast(110%);
 }
 
-.post a {
+.posts .post a {
 	line-height: 0;
 	display: flex;
 	justify-content: center;
 }
 
-.post a > * {
+.posts .post a > * {
+	object-fit: cover;
 	height: 200px;
-	width:  auto;
+	width: auto;
 	max-width: 500px;
+}
+
+@media (max-width: 600px) {
+	.posts .post a > * {
+		height: 300px;
+		max-width: 400px;
+	}
 }

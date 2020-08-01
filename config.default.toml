@@ -2,6 +2,8 @@
 # Either create a new config.toml and override these options or use the -config
 # flag.
 
+siteName = "smolboard demo"
+
 owner         = "diamondburned"
 databasePath  = "/tmp/smolboard.db"
 maxTokenUses  = 100  # max use for the invitation token

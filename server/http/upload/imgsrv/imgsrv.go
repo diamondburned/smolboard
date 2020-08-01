@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
 	"github.com/diamondburned/smolboard/server/http/internal/middleware"
@@ -15,6 +16,7 @@ import (
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/disintegration/imaging"
 	"github.com/go-chi/chi"
+	"github.com/pkg/errors"
 )
 
 // ThumbnailSize controls the dimension of the thumbnail.
@@ -50,13 +52,33 @@ func ServePost(r tx.Request) (interface{}, error) {
 	}
 
 	return func(w http.ResponseWriter) error {
+		// Set up caching. Max age is 7 days.
+		w.Header().Set("Cache-Control", "private, max-age=604800")
+
+		// If the user requested post's extension is different from what we
+		// have, then we do a permanent redirection to the correct filename.
 		if filename := p.Filename(); filename != name {
 			redirect := path.Dir(r.URL.Path) + "/" + filename
 			// Cache the redirect for this specific endpoint.
 			http.Redirect(w, r.Request, redirect, http.StatusPermanentRedirect)
-		} else {
-			http.ServeFile(w, r.Request, filepath.Join(r.Up.FileDirectory, name))
+
+			return nil
 		}
+
+		var filepath = filepath.Join(r.Up.FileDirectory, name)
+
+		// Try and stat the file for the modTime to be used as the ETag. If we
+		// can't stat the file, then don't serve anything.
+		s, err := os.Stat(filepath)
+		if err != nil {
+			return errors.Wrap(err, "Failed to stat file")
+		}
+
+		// Write the ETag as a Unix timestamp in nanoseconds hexadecimal.
+		w.Header().Set("ETag", strconv.FormatInt(s.ModTime().UnixNano(), 16))
+
+		// ServeFile will actually validate the ETag for us.
+		http.ServeFile(w, r.Request, filepath)
 
 		return nil
 	}, nil
@@ -78,11 +100,13 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 	}
 
 	return func(w http.ResponseWriter) error {
+		// Try serving the thumbnail and redirect the user to the original
+		// content if there's none available.
 		if !serveThumbnail(w, r, p.Filename()) {
 			redirect := path.Dir(r.URL.Path) // remove /thumb
-			// There will be no thumbnail for this post, ever.
 			http.Redirect(w, r.Request, redirect, http.StatusPermanentRedirect)
 		}
+
 		// This never fails.
 		return nil
 	}, nil
@@ -120,6 +144,14 @@ func serveThumbnail(w http.ResponseWriter, r tx.Request, name string) bool {
 		return false
 	}
 
-	http.ServeContent(w, r.Request, name, s.ModTime(), bytes.NewReader(buf.Bytes()))
+	// Before serving the content, we could use the ModTime as the ETag for
+	// caching validation.
+	var modTime = s.ModTime()
+	w.Header().Set("ETag", strconv.FormatInt(modTime.UnixNano(), 16))
+
+	// Set up caching. Max age is 7 days.
+	w.Header().Set("Cache-Control", "private, max-age=604800")
+
+	http.ServeContent(w, r.Request, name, modTime, bytes.NewReader(buf.Bytes()))
 	return true
 }

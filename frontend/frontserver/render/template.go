@@ -40,9 +40,11 @@ func BuildPage(n string, p Page) *Template {
 	tmpl = template.Must(tmpl.Parse(string(read(p.Template))))
 
 	// Combine all component duplicates.
-	for n, component := range p.Components {
+	for _, component := range p.Components {
 		if component.Components != nil {
-			p.Components[n] = component
+			for n, component := range component.Components {
+				p.Components[n] = component
+			}
 		}
 	}
 

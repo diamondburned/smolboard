@@ -3,8 +3,11 @@ package frontserver
 import (
 	"net/http"
 
+	"github.com/diamondburned/smolboard/frontend/frontserver/pages/errorpage"
 	"github.com/diamondburned/smolboard/frontend/frontserver/pages/gallery"
 	"github.com/diamondburned/smolboard/frontend/frontserver/pages/home"
+	"github.com/diamondburned/smolboard/frontend/frontserver/pages/post"
+	"github.com/diamondburned/smolboard/frontend/frontserver/pages/signin"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 )
 
@@ -28,8 +31,11 @@ func New(serverHost string, cfg FrontConfig) (http.Handler, error) {
 	}
 
 	r := render.NewMux(serverHost, cfg.Config)
+	r.SetErrorRenderer(errorpage.RenderError)
 	r.Get("/", home.Render)
-	r.Get("/posts", gallery.Render)
+	r.Mount("/posts", gallery.Mount)
+	r.Mount("/posts/{id}", post.Mount)
+	r.Mount("/signin", signin.Mount)
 
 	return r, nil
 }

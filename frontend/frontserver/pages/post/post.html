@@ -1,0 +1,48 @@
+<div class="post">
+	{{ template "nav" . }}
+
+	<div class="content">
+		{{ with .Post }}
+
+		<aside>
+			<form>
+				<legend>Tags</legend>
+				{{ range .Tags }}
+				<input type="submit" class="small"
+					   formaction="/posts"
+					   name="q" value="{{ .TagName }}" />
+				{{ end }}
+				<input type="text" class="small"
+					   name="tag" placeholder="Add a tag..."/>
+				<input type="submit" style="display: none"
+					   formaction="/posts/{{.ID}}/tag" formmethod="post">
+			</form>
+		</aside>
+
+		<main>
+			{{ with .Post }}
+
+			{{ if (isImage .ContentType) }}
+			<img alt="Image" {{ $.ImageSizeAttr . }}
+				 src="{{ $.Session.PostDirectURL . }}"
+				 style="background-image: url('{{ $.Session.PostThumbURL . }}')">
+
+			{{ else if (isVideo .ContentType) }}
+			<video preload="all" controls src="{{ $.Session.PostDirectURL . }}#t=0.1" />
+
+			{{ else }}
+			<div>
+				<p><span class=".icon-link"></span></p>
+				<p>{{ .ContentType }}</p>
+			</div>
+
+			{{ end }}
+
+			{{ end }}
+		</main>
+
+		{{ end }}
+	</div>
+</div>
+
+{{ template "footer" }}

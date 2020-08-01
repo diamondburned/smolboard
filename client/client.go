@@ -15,10 +15,28 @@ import (
 	"github.com/pkg/errors"
 )
 
+// StatusCoder is an interface that ErrUnexpectedStatusCode implements.
+type StatusCoder interface {
+	StatusCode() int
+}
+
+// ErrGetStatusCode gets the status code from error, or returns orCode if it
+// can't get any.
+func ErrGetStatusCode(err error, orCode int) int {
+	if scode, ok := err.(StatusCoder); ok {
+		return scode.StatusCode()
+	}
+	return orCode
+}
+
 type ErrUnexpectedStatusCode struct {
 	Code   int
 	Body   string
 	ErrMsg string
+}
+
+func (err ErrUnexpectedStatusCode) StatusCode() int {
+	return err.Code
 }
 
 func (err ErrUnexpectedStatusCode) Error() string {
@@ -33,30 +51,62 @@ func (err ErrUnexpectedStatusCode) Error() string {
 	return errstr
 }
 
+// DefaultClient is the default client to use for making new clients.
+var DefaultClient = http.Client{
+	Timeout: 10 * time.Second,
+}
+
+// Client contains a single stateful HTTP client. Each session should have its
+// own client, as each client has its own cookiejar.
 type Client struct {
 	http.Client
-	host string
+	host  url.URL
+	agent string
 }
 
 // NewClient makes a new client. Host is optional. This client is HTTPS by
 // default.
-func NewClient(host string) *Client {
+func NewClient(host string) (*Client, error) {
+	u, err := url.Parse(host)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to parse host URL")
+	}
+
 	var client = &Client{
-		Client: http.Client{
-			Timeout: 10 * time.Second,
-		},
-		host: host,
+		Client: DefaultClient,
+		host:   *u,
 	}
 	if runtime.GOOS != "wasm" {
 		client.Client.Jar, _ = cookiejar.New(nil)
 	}
 
-	return client
+	return client, nil
 }
 
-func (c *Client) SetCookies(u *url.URL, cookies []*http.Cookie) {
+// NewClientFromRequest creates a new stateful client with cookies and
+// useragents from the request.
+func NewClientFromRequest(host string, r *http.Request) (*Client, error) {
+	c, err := NewClient(host)
+	if err != nil {
+		return nil, err
+	}
+
+	c.SetUserAgent(r.UserAgent())
+
+	return c, nil
+}
+
+func (c *Client) SetUserAgent(userAgent string) {
+	c.agent = userAgent
+}
+
+func (c *Client) Cookies() []*http.Cookie {
+	return c.Jar.Cookies(&c.host)
+}
+
+func (c *Client) SetCookies(cookies []*http.Cookie) {
 	if c.Jar != nil {
-		c.Jar.SetCookies(u, cookies)
+		c.Jar.SetCookies(&c.host, cookies)
 	}
 }
 
@@ -64,25 +114,20 @@ func (c *Client) SetCookieJar(j http.CookieJar) {
 	c.Jar = j
 }
 
+// Host returns the stringified URL.
 func (c *Client) Host() string {
-	return c.host
+	return c.host.String()
 }
 
 // Endpoint returns the HTTPS endpoint, or empty
 func (c *Client) Endpoint() string {
-	if c.host == "" {
-		return "/api/v1"
-	}
-	if strings.HasPrefix(c.host, "http") {
-		return c.host + "/api/v1"
-	}
-	return fmt.Sprintf("https://%s/api/v1", c.host)
+	return c.Host() + "/api/v1"
 }
 
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	// Support WebAssembly.
-	if runtime.GOOS == "wasm" {
-		req.Header.Set("js.fetch:credentials", "same-origin")
+	// Override the UserAgent if we have one.
+	if c.agent != "" {
+		req.Header.Set("User-Agent", c.agent)
 	}
 
 	r, err := c.Client.Do(req)
@@ -144,6 +189,17 @@ func (c *Client) Get(path string, resp interface{}, v url.Values) error {
 	var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
 
 	r, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return errors.Wrap(err, "Failed to create request")
+	}
+
+	return c.DoJSON(r, resp)
+}
+
+func (c *Client) Delete(path string, resp interface{}, v url.Values) error {
+	var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
+
+	r, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return errors.Wrap(err, "Failed to create request")
 	}

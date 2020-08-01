@@ -1,14 +1,14 @@
-package gallery
+package post
 
 import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/nav"
-	"github.com/diamondburned/smolboard/frontend/frontserver/internal/unblur"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
@@ -17,14 +17,12 @@ import (
 
 func init() {
 	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/gallery/gallery.css"),
+		pkger.Include("/frontend/frontserver/pages/post/post.css"),
 	)
 }
 
-const MaxThumbSize = 200
-
 var tmpl = render.BuildPage("home", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/gallery/gallery.html"),
+	Template: pkger.Include("/frontend/frontserver/pages/post/post.html"),
 	Components: map[string]render.Component{
 		"nav":    nav.Component,
 		"footer": footer.Component,
@@ -44,7 +42,7 @@ func genericMIME(mime string) string {
 
 type renderCtx struct {
 	render.CommonCtx
-	Posts []smolboard.Post
+	Post smolboard.PostWithTags
 }
 
 func (r renderCtx) ImageSizeAttr(p smolboard.Post) template.HTMLAttr {
@@ -52,47 +50,78 @@ func (r renderCtx) ImageSizeAttr(p smolboard.Post) template.HTMLAttr {
 		return ""
 	}
 
-	w, h := unblur.MaxSize(
+	return template.HTMLAttr(fmt.Sprintf(
+		`width="%d" height="%d"`,
 		p.Attributes.Width, p.Attributes.Height,
-		MaxThumbSize, MaxThumbSize,
-	)
-
-	return template.HTMLAttr(fmt.Sprintf(`width="%d" height="%d"`, w, h))
-}
-
-func (r renderCtx) InlineImage(p smolboard.Post) interface{} {
-	h, err := unblur.InlinePost(p)
-	if err == nil {
-		return template.URL(h)
-	}
-
-	return r.Session.PostThumbURL(p)
+	))
 }
 
 func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(pageRender))
+	mux.Post("/tag", muxer.M(tagPost))
 	return mux
 }
 
 func pageRender(r render.Request) (render.Render, error) {
-	p, err := r.Session.Posts(25, 0)
+	i, err := r.IDParam()
 	if err != nil {
-		return render.Render{}, err
+		return render.Empty, err
 	}
 
-	// Push thumbnails before page load.
-	for _, post := range p.Posts {
-		r.Push(r.Session.PostThumbURL(post))
+	p, err := r.Session.Post(i)
+	if err != nil {
+		return render.Empty, err
 	}
 
 	var renderCtx = renderCtx{
 		CommonCtx: r.CommonCtx,
-		Posts:     p.Posts,
+		Post:      p,
+	}
+
+	var author = "Deleted User"
+	if p.Poster != nil {
+		author = *p.Poster
+	}
+
+	description := strings.Builder{}
+	description.Grow(128)
+
+	for _, tag := range p.Tags {
+		if description.WriteString(tag.TagName); description.Len() > 128 {
+			break
+		}
 	}
 
 	return render.Render{
-		Title: "Gallery",
-		Body:  tmpl.Render(renderCtx),
+		Title:       author,
+		Description: ellipsize(description.String()),
+		ImageURL:    r.Session.PostDirectURL(p.Post),
+		Body:        tmpl.Render(renderCtx),
 	}, nil
+}
+
+func tagPost(r render.Request) (render.Render, error) {
+	i, err := r.IDParam()
+	if err != nil {
+		return render.Empty, err
+	}
+
+	if err := r.Session.TagPost(i, r.FormValue("tag")); err != nil {
+		return render.Empty, err
+	}
+
+	// trim the /tags suffix
+	var postURL = path.Dir(r.URL.Path)
+
+	http.Redirect(r.Writer, r.Request, postURL, http.StatusTemporaryRedirect)
+	return render.Empty, nil
+}
+
+func ellipsize(str string) string {
+	if len(str) < 128 {
+		return str
+	}
+
+	return str[:125] + "..."
 }

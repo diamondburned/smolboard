@@ -1,13 +1,23 @@
 <nav>
 	<h2>
 		<a href="/posts">
-			{{ with .SiteName }}
-			{{ . }}
-			{{ else }}
-			smolboard
-			{{ end }}
+			<span class="icon-home"></span>
+			<span class="sitename">
+				{{ with .Config.SiteName }}
+				{{ . }}
+				{{ else }}
+				smolboard
+				{{ end }}
+			</span>
 		</a>
 	</h2>
 
 	{{ template "search" }}
+
+	<div class="user">
+		<span class="username">
+
+		</span>
+		<span class="icon-user"></span>
+	</div>
 </nav>

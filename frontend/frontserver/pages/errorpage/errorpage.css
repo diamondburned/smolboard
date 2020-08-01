@@ -1,0 +1,57 @@
+.errorpage {
+	flex: 1;
+	flex-direction: column;
+	display: flex;
+}
+
+.errorpage main.error {
+	margin: auto;
+	width:  100%;
+	max-width: 600px;
+}
+
+.errorpage div.inner {
+	margin: var(--universal-margin);
+	border: 1px solid var(--input-invalid-color);
+	border-radius: var(--universal-border-radius);
+}
+
+.errorpage h1 {
+	text-align: center;
+	margin-top: calc(2 * var(--universal-margin));
+}
+
+.errorpage div.inner > ul {
+	margin: calc(2 * var(--universal-margin));
+	margin-top: 0;
+}
+
+.errorpage div.inner > ul > li {
+	font-weight: bold;
+}
+
+/* Only descendants of the second and below list: */
+.errorpage div.inner > ul > ul ul {
+	margin-left: 1em;
+}
+
+.errorpage ul {
+	list-style: none;
+	padding-left: 0;
+}
+
+.errorpage li {
+	font-family: monospace;
+}
+
+/* Ignore first ul */
+.errorpage ul ul {
+	margin: 0;
+	margin-top: 0.2em;
+}
+
+.errorpage ul ul li:before {
+	content: "└─";
+	user-select: none;
+	margin-right: 0.5em;
+}

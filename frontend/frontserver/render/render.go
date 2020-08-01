@@ -5,7 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"net/url"
+	"strconv"
 
 	"github.com/diamondburned/smolboard/client"
 	"github.com/go-chi/chi"
@@ -15,6 +15,9 @@ import (
 // Renderer represents a renderable page.
 type Renderer = func(r Request) (Render, error)
 
+// ErrorRenderer represents a renderable page for errors.
+type ErrorRenderer = func(r Request, err error) (Render, error)
+
 type Render struct {
 	Title       string // og:title, <title>
 	Description string // og:description
@@ -22,6 +25,9 @@ type Render struct {
 
 	Body template.HTML
 }
+
+// Empty is a blank page.
+var Empty = Render{}
 
 type Config struct {
 	SiteName string `toml:"siteName"`
@@ -52,22 +58,32 @@ func (r renderCtx) FormatTitle() string {
 
 type Request struct {
 	*http.Request
-	writer FlushWriter
+	Writer FlushWriter
 	pusher http.Pusher
-
-	Config    Config
-	Session   *client.Session
-	cookieURL *url.URL
+	CommonCtx
 }
 
-// FlushCookies flushes the cookies.
+// TokenCookie returns the cookie that contains the token if any or nil if
+// none.
+func (r *Request) TokenCookie() *http.Cookie {
+	for _, cookie := range r.Session.Client.Cookies() {
+		if cookie.Name == "token" {
+			return cookie
+		}
+	}
+	return nil
+}
+
+// FlushCookies dumps all the session state's cookies to the response writer.
 func (r *Request) FlushCookies() {
-	r.Session.Client.Jar.Cookies(r.cookieURL)
+	for _, cookie := range r.Session.Client.Cookies() {
+		http.SetCookie(r.Writer, cookie)
+	}
 }
 
 func (r *Request) Push(url string) {
 	if r.pusher == nil {
-		ps, ok := r.writer.(http.Pusher)
+		ps, ok := r.Writer.(http.Pusher)
 		if !ok {
 			return
 		}
@@ -75,6 +91,21 @@ func (r *Request) Push(url string) {
 	}
 
 	r.pusher.Push(url, nil)
+}
+
+func (r *Request) Param(name string) string {
+	return chi.URLParam(r.Request, name)
+}
+
+// IDParam returns the ID parameter from chi.
+func (r *Request) IDParam() (int64, error) {
+	return strconv.ParseInt(r.Param("id"), 10, 64)
+}
+
+type CommonCtx struct {
+	Username string
+	Config   Config
+	Session  *client.Session
 }
 
 func pushAssets(next http.Handler) http.Handler {
@@ -95,6 +126,7 @@ type Mux struct {
 	*chi.Mux
 	host string
 	cfg  Config
+	errR ErrorRenderer
 }
 
 func NewMux(serverHost string, cfg Config) *Mux {
@@ -106,22 +138,37 @@ func NewMux(serverHost string, cfg Config) *Mux {
 		r.Mount("/", http.FileServer(pkger.Dir("/frontend/frontserver/static/")))
 	})
 
-	return &Mux{r, serverHost, cfg}
+	return &Mux{r, serverHost, cfg, nil}
+}
+
+func (m *Mux) SetErrorRenderer(r ErrorRenderer) {
+	m.errR = r
 }
 
 func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) Request {
-	url := *r.URL
-	url.Host = r.Host
+	c, err := client.NewClientFromRequest(m.host, r)
+	if err != nil {
+		// Host is a constant, so we can panic here.
+		log.Panicln("Error making client:", err)
+	}
 
-	s := client.NewSession(m.host)
-	s.Client.SetCookies(&url, r.Cookies())
+	s := client.NewSessionWithClient(c)
+
+	// Try and grab the username from the cookies. Only use this username value
+	// for visual purposes, such as displaying.
+	var username string
+	if c, err := r.Cookie("username"); err == nil {
+		username = c.Value
+	}
 
 	return Request{
-		Request:   r,
-		writer:    TryFlushWriter(w),
-		Session:   s,
-		Config:    m.cfg,
-		cookieURL: &url,
+		Request: r,
+		Writer:  TryFlushWriter(w),
+		CommonCtx: CommonCtx{
+			Username: username,
+			Config:   m.cfg,
+			Session:  s,
+		},
 	}
 }
 
@@ -135,13 +182,34 @@ func (m *Mux) M(render Renderer) http.HandlerFunc {
 
 		page, err := render(request)
 		if err != nil {
-			// TODO
-			log.Println("Error:", err)
-			return
+			// Copy the status code if available. Else, fallback to 500.
+			w.WriteHeader(client.ErrGetStatusCode(err, 500))
+
+			// If there is no error renderer, then we just write the error down
+			// in plain text.
+			if m.errR == nil {
+				fmt.Fprintf(w, "Error: %v", err)
+				return
+			}
+
+			// Render the error page.
+			page, err = m.errR(request, err)
+			if err != nil {
+				// This shouldn't error out, so we should log it.
+				log.Println("Error rendering error page:", err)
+				return
+			}
+
+		} else {
+			// Flush the cookies before writing the body if there is no error.
+			request.FlushCookies()
 		}
 
-		// Flush the cookies before writing the body.
-		request.FlushCookies()
+		// Don't render anything if an empty page is returned and there is no
+		// error.
+		if page == Empty {
+			return
+		}
 
 		var renderCtx = renderCtx{
 			Theme:  GetTheme(r.Context()),
@@ -157,4 +225,21 @@ func (m *Mux) M(render Renderer) http.HandlerFunc {
 
 func (m *Mux) Get(route string, r Renderer) {
 	m.Mux.Get(route, m.M(r))
+}
+
+func (m *Mux) Post(route string, r Renderer) {
+	m.Mux.Post(route, m.M(r))
+}
+
+func (m *Mux) Delete(route string, r Renderer) {
+	m.Mux.Delete(route, m.M(r))
+}
+
+// Muxer implements the interface that's passable to pages' mount functions.
+type Muxer interface {
+	M(Renderer) http.HandlerFunc
+}
+
+func (m *Mux) Mount(route string, mounter func(Muxer) http.Handler) {
+	m.Mux.Mount(route, mounter(m))
 }

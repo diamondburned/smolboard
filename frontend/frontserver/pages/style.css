@@ -21,3 +21,13 @@ form.seamless {
     padding: 0;
     border-radius: 0;
 }
+
+span[class^='icon-'] {
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 0.5em;
+    width: auto;
+    margin: auto;
+    display: inline-flex;
+	vertical-align: text-bottom;
+}

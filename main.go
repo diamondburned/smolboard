@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,6 +29,8 @@ func stderrlnf(f string, v ...interface{}) {
 
 type Config struct {
 	Address string `toml:"address"`
+	address *url.URL
+
 	frontserver.FrontConfig
 	server.Config
 }

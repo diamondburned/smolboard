@@ -3,28 +3,36 @@ nav {
 	margin-bottom: 0;
 }
 
-nav h2 {
+nav h2, h4 {
 	padding: 0;
+	margin: 0;
+}
+
+nav > a, nav > a:visited {
+	padding: 0 8px;
+	color: var(--fore-color) !important;
 	margin: calc(var(--universal-margin) / 2);
 	margin-right: 0;
+	align-self: center;
 }
 
-nav h2 a {
-	padding: 0 8px;
-	height: 100%;
-}
-
-nav div.user {
+nav .user button {
+	padding: var(--universal-margin);
 	margin: calc(var(--universal-margin) / 2);
 	margin-left: 0;
+	background-color: transparent;
 }
 
-span.sitename {
+nav .user button:hover {
+	background-color: var(--nav-hover-back-color);
+}
+
+span.sitename, span.username {
 	padding: 0;
 }
 
 @media (max-width: 600px) {
-	span.sitename {
+	span.sitename, span.username {
 		display: none;
 	}
 }

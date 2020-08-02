@@ -10,6 +10,10 @@ footer:hover {
 	margin-bottom: 0;
 }
 
+footer:not(:hover) {
+	transition-delay: 250ms;
+}
+
 footer * {
 	font-size: 0.9rem;
 }

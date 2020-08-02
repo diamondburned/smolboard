@@ -75,8 +75,8 @@ func Mount(muxer render.Muxer) http.Handler {
 	return mux
 }
 
-func pageRender(r render.Request) (render.Render, error) {
-	p, err := r.Session.Posts(25, 0)
+func pageRender(r *render.Request) (render.Render, error) {
+	p, err := r.Session.PostSearch(r.FormValue("q"), 25, 0)
 	if err != nil {
 		return render.Render{}, err
 	}

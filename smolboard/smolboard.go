@@ -79,6 +79,61 @@ func (p Permission) String() string {
 	}
 }
 
+func (p Permission) HasPermission(min Permission, inclusive bool) error {
+	// Is this a valid permission?
+	if min < PermissionGuest || min > PermissionOwner {
+		return ErrInvalidPermission
+	}
+
+	if p > min || (inclusive && p == min) {
+		return nil
+	}
+
+	// Else, return forbidden.
+	return ErrActionNotPermitted
+}
+
+func (p Permission) IsUserOrHasPermOver(min, target Permission, self, targetUser string) error {
+	if self == targetUser {
+		return nil
+	}
+	return p.HasPermOverUser(min, target, self, targetUser)
+}
+
+func (p Permission) HasPermOverUser(min, target Permission, self, targetUser string) error {
+	// Is this a valid permission?
+	if min < PermissionGuest || min > PermissionOwner {
+		return ErrInvalidPermission
+	}
+
+	// If the target permission is the same or larger than the current user's
+	// permission and the user is different, then reject.
+	if p < min {
+		return ErrActionNotPermitted
+	}
+
+	// If the target user is the current user and the target permission is the
+	// same or lower than the target, then allow.
+	if self == targetUser && p >= min {
+		return nil
+	}
+
+	// At this point, p >= min. This means the user does indeed have more than
+	// the required requirements. We now need to check that the target
+	// permission has a lower permission.
+
+	// If the target user has the same or higher permission, then deny.
+	if target >= p {
+		return ErrActionNotPermitted
+	}
+
+	// At this point:
+	// 1. The current user has more or same permission than what's required.
+	// 2. The target has a lower permission than the current user.
+	// 3. The target user is not the current user.
+	return nil
+}
+
 type PostAttribute struct {
 	Width    int    `json:"w,omitempty"`
 	Height   int    `json:"h,omitempty"`

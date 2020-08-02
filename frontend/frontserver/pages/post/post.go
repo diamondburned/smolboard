@@ -3,6 +3,7 @@ package post
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"path"
 	"strings"
@@ -42,7 +43,16 @@ func genericMIME(mime string) string {
 
 type renderCtx struct {
 	render.CommonCtx
-	Post smolboard.PostWithTags
+	User   smolboard.UserPart
+	Post   smolboard.PostWithTags
+	Poster string
+}
+
+func (r renderCtx) CanChangePost() bool {
+	return nil == r.User.Permission.IsUserOrHasPermOver(
+		smolboard.PermissionAdministrator, r.Post.Permission,
+		r.Username, r.Poster,
+	)
 }
 
 func (r renderCtx) ImageSizeAttr(p smolboard.Post) template.HTMLAttr {
@@ -63,25 +73,41 @@ func Mount(muxer render.Muxer) http.Handler {
 	return mux
 }
 
-func pageRender(r render.Request) (render.Render, error) {
+func pageRender(r *render.Request) (render.Render, error) {
 	i, err := r.IDParam()
 	if err != nil {
 		return render.Empty, err
 	}
+
+	log.Println("RequestURI:", r.RequestURI)
 
 	p, err := r.Session.Post(i)
 	if err != nil {
 		return render.Empty, err
 	}
 
-	var renderCtx = renderCtx{
-		CommonCtx: r.CommonCtx,
-		Post:      p,
+	// Try and get the current user, but create a dummy user if we can't.
+	u, err := r.Session.Me()
+	if err != nil {
+		u = smolboard.UserPart{
+			Username: r.Username,
+		}
+	} else {
+		// Override the username in the common context so components will use
+		// this newly fetched username.
+		r.Username = u.Username
 	}
 
-	var author = "Deleted User"
+	var poster = "Deleted User"
 	if p.Poster != nil {
-		author = *p.Poster
+		poster = *p.Poster
+	}
+
+	var renderCtx = renderCtx{
+		CommonCtx: r.CommonCtx,
+		User:      u,
+		Post:      p,
+		Poster:    poster,
 	}
 
 	description := strings.Builder{}
@@ -94,14 +120,14 @@ func pageRender(r render.Request) (render.Render, error) {
 	}
 
 	return render.Render{
-		Title:       author,
+		Title:       poster,
 		Description: ellipsize(description.String()),
 		ImageURL:    r.Session.PostDirectURL(p.Post),
 		Body:        tmpl.Render(renderCtx),
 	}, nil
 }
 
-func tagPost(r render.Request) (render.Render, error) {
+func tagPost(r *render.Request) (render.Render, error) {
 	i, err := r.IDParam()
 	if err != nil {
 		return render.Empty, err
@@ -114,7 +140,7 @@ func tagPost(r render.Request) (render.Render, error) {
 	// trim the /tags suffix
 	var postURL = path.Dir(r.URL.Path)
 
-	http.Redirect(r.Writer, r.Request, postURL, http.StatusTemporaryRedirect)
+	http.Redirect(r.Writer, r.Request, postURL, http.StatusSeeOther)
 	return render.Empty, nil
 }
 

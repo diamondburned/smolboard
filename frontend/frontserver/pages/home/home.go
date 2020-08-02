@@ -23,7 +23,7 @@ var tmpl = render.BuildPage("home", render.Page{
 	},
 })
 
-func Render(r render.Request) (render.Render, error) {
+func Render(r *render.Request) (render.Render, error) {
 	return render.Render{
 		Body: tmpl.Render(r.Config),
 	}, nil

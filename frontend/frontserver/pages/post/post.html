@@ -7,16 +7,36 @@
 		<aside>
 			<form>
 				<legend>Tags</legend>
+				{{/* This has to be first for the tag input to work */}}
+				<input type="submit" style="display: none"
+					   name="submit"
+					   formaction="/posts/{{.ID}}/tag" formmethod="post" />
+
 				{{ range .Tags }}
-				<input type="submit" class="small"
+				<input type="submit" class="tag"
 					   formaction="/posts"
 					   name="q" value="{{ .TagName }}" />
 				{{ end }}
-				<input type="text" class="small"
-					   name="tag" placeholder="Add a tag..."/>
-				<input type="submit" style="display: none"
-					   formaction="/posts/{{.ID}}/tag" formmethod="post">
+
+				{{ if $.CanChangePost }}
+				<input type="text" class="add"
+					   name="tag" placeholder="Add a tag..."
+					   formaction="/posts/{{.ID}}/tag" formmethod="post" />
+				{{ end }}
 			</form>
+
+			<div class="post-info">
+				<legend>Post</legend>
+
+				<!-- <div class="post-link"> -->
+				<!-- 	<label for="post-link">Post Link</label> -->
+				<!-- 	<input type="text" id="post-link" value=""> -->
+				<!-- </div> -->
+
+				<!-- <div class="direct-link"> -->
+
+				<!-- </div> -->
+			</div>
 		</aside>
 
 		<main>

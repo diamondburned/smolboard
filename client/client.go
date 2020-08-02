@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
-	"runtime"
 	"strings"
 	"time"
 
@@ -51,16 +49,11 @@ func (err ErrUnexpectedStatusCode) Error() string {
 	return errstr
 }
 
-// DefaultClient is the default client to use for making new clients.
-var DefaultClient = http.Client{
-	Timeout: 10 * time.Second,
-}
-
 // Client contains a single stateful HTTP client. Each session should have its
 // own client, as each client has its own cookiejar.
 type Client struct {
 	http.Client
-	host  url.URL
+	host  *url.URL
 	agent string
 }
 
@@ -73,11 +66,11 @@ func NewClient(host string) (*Client, error) {
 	}
 
 	var client = &Client{
-		Client: DefaultClient,
-		host:   *u,
-	}
-	if runtime.GOOS != "wasm" {
-		client.Client.Jar, _ = cookiejar.New(nil)
+		Client: http.Client{
+			Timeout: 10 * time.Second,
+			Jar:     NewJar(),
+		},
+		host: u,
 	}
 
 	return client, nil
@@ -91,6 +84,7 @@ func NewClientFromRequest(host string, r *http.Request) (*Client, error) {
 		return nil, err
 	}
 
+	c.SetCookies(r.Cookies())
 	c.SetUserAgent(r.UserAgent())
 
 	return c, nil
@@ -101,17 +95,11 @@ func (c *Client) SetUserAgent(userAgent string) {
 }
 
 func (c *Client) Cookies() []*http.Cookie {
-	return c.Jar.Cookies(&c.host)
+	return c.Jar.Cookies(c.host)
 }
 
 func (c *Client) SetCookies(cookies []*http.Cookie) {
-	if c.Jar != nil {
-		c.Jar.SetCookies(&c.host, cookies)
-	}
-}
-
-func (c *Client) SetCookieJar(j http.CookieJar) {
-	c.Jar = j
+	c.Jar.SetCookies(c.host, cookies)
 }
 
 // Host returns the stringified URL.

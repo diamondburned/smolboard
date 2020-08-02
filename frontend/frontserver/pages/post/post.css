@@ -15,7 +15,26 @@
 	margin-bottom: 0;
 }
 
-.post aside form input {
+.post aside form legend,
+.post aside form .tag {
+	padding: 0 var(--universal-padding);
+	margin:  0 var(--universal-margin);
+}
+
+.post aside form legend {
+	margin-bottom: calc(var(--universal-margin) / 2);
+}
+
+.post aside form .tag {
+	background: inherit;
+	text-align: start;
+	color: var(--a-link-color);
+}
+.post aside form .tag:hover {
+	text-decoration: underline;
+}
+
+.post aside form .add {
 	height: 2em;
 }
 
@@ -23,6 +42,8 @@
 	margin: var(--universal-margin);
 	margin-left: 0;
 	line-height: 0;
+	border: .0625rem solid var(--form-border-color);
+	border-radius: var(--universal-border-radius);
 }
 
 .post main > * {

@@ -1,6 +1,6 @@
 <nav>
-	<h2>
-		<a href="/posts">
+	<a href="/posts">
+		<h2>
 			<span class="icon-home"></span>
 			<span class="sitename">
 				{{ with .Config.SiteName }}
@@ -9,15 +9,28 @@
 				smolboard
 				{{ end }}
 			</span>
-		</a>
-	</h2>
+		</h2>
+	</a>
 
-	{{ template "search" }}
+	{{ template "search" . }}
 
-	<div class="user">
-		<span class="username">
-
-		</span>
-		<span class="icon-user"></span>
-	</div>
+	{{ with .Username }}
+	<form class="user seamless" method="get" action="/posts">
+		<button type="submit" name="q" value="@{{.}}">
+			<h4>
+				<span class="username valid">{{ . }}</span>
+				<span class="icon-user"></span>
+			</h4>
+		</button>
+	</form>
+	{{ else }}
+	<form class="user seamless" method="get" action="/signin">
+		<button type="submit">
+			<h4>
+				<span class="username">Sign in</span>
+				<span class="icon-lock"></span>
+			</h4>
+		</button>
+	</form>
+	{{ end }}
 </nav>

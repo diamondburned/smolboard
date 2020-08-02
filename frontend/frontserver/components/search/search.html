@@ -1,5 +1,7 @@
 <form class="search-input seamless" action="/posts" method="get">
-	<input type="text" name="q" placeholder="Search">
+	{{ $q := (.Request.FormValue "q") }}
+	<input type="text" name="q" value="{{ $q }}" placeholder="Search">
+
 	<button type="submit" value="Submit">
 		<span class="icon-search"></span>
 	</button>

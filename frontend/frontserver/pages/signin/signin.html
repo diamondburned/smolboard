@@ -1,12 +1,19 @@
 <div class="signin">
+
 	<form class="signin" action="/signin" method="post">
-		<legend>Signin</legend>
+		{{ with .Error }}
+		<p class="error" alt={{ . }}>{{ minifyError . }}</p>
+		{{ end }}
 
-		<label for="username">Username</label>
-		<input type="text" id="username" name="username">
+		<div class="inputs">
+			<label for="username">Username</label>
+			<input type="text" id="username" name="username">
+	
+			<label for="password">Password</label>
+			<input type="password" id="password" name="password">
+		</div>
 
-		<label for="password">Password</label>
-		<input type="password" id="password" name="password">
+		<button type="submit" class="signin">Sign in</button>
 	</form>
 </div>
 

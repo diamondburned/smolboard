@@ -13,10 +13,10 @@ import (
 )
 
 // Renderer represents a renderable page.
-type Renderer = func(r Request) (Render, error)
+type Renderer = func(r *Request) (Render, error)
 
 // ErrorRenderer represents a renderable page for errors.
-type ErrorRenderer = func(r Request, err error) (Render, error)
+type ErrorRenderer = func(r *Request, err error) (Render, error)
 
 type Render struct {
 	Title       string // og:title, <title>
@@ -102,10 +102,17 @@ func (r *Request) IDParam() (int64, error) {
 	return strconv.ParseInt(r.Param("id"), 10, 64)
 }
 
+func (r *Request) Redirect(url string, code int) {
+	// Flush the cookies before writing the header.
+	r.FlushCookies()
+	http.Redirect(r.Writer, r.Request, url, code)
+}
+
 type CommonCtx struct {
-	Username string
 	Config   Config
+	Request  *http.Request
 	Session  *client.Session
+	Username string
 }
 
 func pushAssets(next http.Handler) http.Handler {
@@ -145,7 +152,7 @@ func (m *Mux) SetErrorRenderer(r ErrorRenderer) {
 	m.errR = r
 }
 
-func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) Request {
+func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) *Request {
 	c, err := client.NewClientFromRequest(m.host, r)
 	if err != nil {
 		// Host is a constant, so we can panic here.
@@ -161,13 +168,14 @@ func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) Request {
 		username = c.Value
 	}
 
-	return Request{
+	return &Request{
 		Request: r,
 		Writer:  TryFlushWriter(w),
 		CommonCtx: CommonCtx{
-			Username: username,
 			Config:   m.cfg,
+			Request:  r,
 			Session:  s,
+			Username: username,
 		},
 	}
 }

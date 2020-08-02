@@ -28,7 +28,11 @@ func Mount(m tx.Middlewarer) http.Handler {
 }
 
 func GetUser(r tx.Request) (interface{}, error) {
-	return r.Tx.User(r.Param("username"))
+	var username = r.Param("username")
+	if username == "@me" {
+		return r.Tx.Me()
+	}
+	return r.Tx.User(username)
 }
 
 func DeleteUser(r tx.Request) (interface{}, error) {

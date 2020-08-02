@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"strings"
+	"net/url"
 	"time"
 
 	"github.com/diamondburned/smolboard/server/db"
@@ -35,14 +35,18 @@ func (r *Request) SetSession(s *smolboard.Session) {
 		r.Tx.Session = smolboard.Session{}
 	}
 
-	var host string
-	if strings.Contains(r.Host, ".") {
-		host = r.Host
+	// Trim the port if needed.
+	var host = r.Host
+	// Trick the URL parser into thinking this is a valid URL by prepending a
+	// valid scheme.
+	if u, err := url.Parse("https://" + host); err == nil {
+		host = u.Hostname()
 	}
 
 	http.SetCookie(r.wr, &http.Cookie{
 		Name:     "token",
 		Value:    r.Tx.Session.AuthToken,
+		Path:     "/",
 		Domain:   host,
 		Expires:  time.Unix(0, r.Tx.Session.Deadline),
 		SameSite: http.SameSiteStrictMode,

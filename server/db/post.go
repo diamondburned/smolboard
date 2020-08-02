@@ -128,7 +128,9 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 	}
 
 	if err := d.QueryRow(cstring, inargs...).Scan(&results.Total); err != nil {
-		return smolboard.NoResults, errors.Wrap(err, "Failed to scan total posts found")
+		if !errors.Is(err, sql.ErrNoRows) {
+			return smolboard.NoResults, errors.Wrap(err, "Failed to scan total posts found")
+		}
 	}
 
 	return results, nil
@@ -226,7 +228,7 @@ func (d *Transaction) Post(id int64) (*smolboard.PostWithTags, error) {
 		tags = append(tags, tag)
 	}
 
-	return &smolboard.PostWithTags{post, tags}, nil
+	return &smolboard.PostWithTags{Post: post, Tags: tags}, nil
 }
 
 func (d *Transaction) SavePost(post *smolboard.Post) error {

@@ -1,0 +1,43 @@
+div.signin {
+	margin: auto;
+	width: 100%;
+	max-width: 400px;
+}
+
+form.signin {
+	display: flex;
+	flex-direction: column;
+	padding-right: calc(2 * var(--universal-padding));
+}
+
+form.signin p.error {
+	color: var(--input-invalid-color);
+}
+
+form.signin p.error::before {
+	content: "Error: ";
+	font-weight: bold;
+}
+
+form.signin .inputs {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	grid-row-gap: var(--universal-margin);
+	justify-items: stretch;
+	align-items: baseline;
+}
+
+form.signin .inputs label {
+	text-align: center;
+}
+
+form.signin .inputs input {
+	width:  100%;
+	margin: 0;
+}
+
+form.signin button.signin {
+	align-self: flex-end;
+	margin-right:  0;
+	margin-bottom: 0;
+}

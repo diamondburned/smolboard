@@ -73,6 +73,10 @@ func (d *Transaction) User(username string) (*smolboard.UserPart, error) {
 	return nil, errors.Wrap(err, "Failed to scan row to user")
 }
 
+func (d *Transaction) Me() (*smolboard.UserPart, error) {
+	return d.User(d.Session.Username)
+}
+
 // PromoteUser promotes or demotes someone else.
 func (d *Transaction) PromoteUser(username string, p smolboard.Permission) error {
 	// No inclusivity, as the current user can only promote to the permission

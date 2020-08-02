@@ -30,7 +30,7 @@ type renderCtx struct {
 	Errors []string
 }
 
-func RenderError(r render.Request, err error) (render.Render, error) {
+func RenderError(r *render.Request, err error) (render.Render, error) {
 	var errors = strings.SplitAfter(err.Error(), ": ")
 
 	// Capitalize every single error's first letter.

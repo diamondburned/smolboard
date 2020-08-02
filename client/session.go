@@ -31,19 +31,27 @@ func NewSessionWithClient(c *Client) *Session {
 	}
 }
 
-func (s *Session) Signin(username, password string) (sm *smolboard.Session, err error) {
+func (s *Session) Signin(username, password string) (sm smolboard.Session, err error) {
 	return sm, s.Client.Post("/signin", &sm, url.Values{
 		"username": {username},
 		"password": {password},
 	})
 }
 
-func (s *Session) Signup(username, password, token string) (sm *smolboard.Session, err error) {
+func (s *Session) Signup(username, password, token string) (sm smolboard.Session, err error) {
 	return sm, s.Client.Post("/signup", &sm, url.Values{
 		"username": {username},
 		"password": {password},
 		"token":    {token},
 	})
+}
+
+func (s *Session) Me() (u smolboard.UserPart, err error) {
+	return u, s.Client.Get("/users/@me", &u, nil)
+}
+
+func (s *Session) User(username string) (u smolboard.UserPart, err error) {
+	return u, s.Client.Get("/users/"+url.PathEscape(username), &u, nil)
 }
 
 func (s *Session) Post(id int64) (p smolboard.PostWithTags, err error) {

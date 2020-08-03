@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/nav"
@@ -31,6 +32,15 @@ var tmpl = render.BuildPage("home", render.Page{
 	Functions: map[string]interface{}{
 		"isImage": func(ctype string) bool { return genericMIME(ctype) == "image" },
 		"isVideo": func(ctype string) bool { return genericMIME(ctype) == "video" },
+
+		// fmtTime formats the given time to input date value's format.
+		"fmtTime": func(t time.Time) string {
+			return t.Format("2006-01-02T15:04")
+		},
+
+		"allPermissions": func() []smolboard.Permission {
+			return smolboard.AllPermissions()
+		},
 	},
 })
 
@@ -44,15 +54,16 @@ func genericMIME(mime string) string {
 type renderCtx struct {
 	render.CommonCtx
 	User   smolboard.UserPart
-	Post   smolboard.PostWithTags
+	Post   smolboard.PostExtended
 	Poster string
 }
 
 func (r renderCtx) CanChangePost() bool {
-	return nil == r.User.Permission.IsUserOrHasPermOver(
-		smolboard.PermissionAdministrator, r.Post.Permission,
-		r.Username, r.Poster,
-	)
+	return r.User.CanChangePost(r.Post.Post) == nil
+}
+
+func (r renderCtx) CanSetPerm(p smolboard.Permission) bool {
+	return r.User.CanSetPostPermission(r.Post, p) == nil
 }
 
 func (r renderCtx) ImageSizeAttr(p smolboard.Post) template.HTMLAttr {

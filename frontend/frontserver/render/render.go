@@ -102,10 +102,17 @@ func (r *Request) IDParam() (int64, error) {
 	return strconv.ParseInt(r.Param("id"), 10, 64)
 }
 
-func (r *Request) Redirect(url string, code int) {
+func (r *Request) Redirect(path string, code int) {
 	// Flush the cookies before writing the header.
 	r.FlushCookies()
-	http.Redirect(r.Writer, r.Request, url, code)
+
+	// If the URL matches the current path, then we should redirect somewhere
+	// else.
+	if path == r.URL.Path {
+		path = "/posts"
+	}
+
+	http.Redirect(r.Writer, r.Request, path, code)
 }
 
 type CommonCtx struct {

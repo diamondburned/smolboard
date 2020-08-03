@@ -7,7 +7,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Permission scans for the permission of that user.
+// Permission scans for the permission of that user. It returns -1 if there is
+// an error.
 func (d *Transaction) permission(user string) (perm smolboard.Permission, err error) {
 	err = d.
 		QueryRow("SELECT permission FROM users WHERE username = ?", user).
@@ -15,10 +16,10 @@ func (d *Transaction) permission(user string) (perm smolboard.Permission, err er
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, smolboard.ErrUserNotFound
+			return -1, smolboard.ErrUserNotFound
 		}
 
-		return 0, errors.Wrap(err, "Failed to scan permission")
+		return -1, errors.Wrap(err, "Failed to scan permission")
 	}
 
 	return perm, nil
@@ -61,10 +62,8 @@ func (d *Transaction) HasPermOverUser(min smolboard.Permission, user string) err
 		return err
 	}
 
-	t, err := d.permission(user)
-	if err != nil {
-		return err
-	}
+	// Accept a -1 permission.
+	t, _ := d.permission(user)
 
 	return p.HasPermOverUser(min, t, d.Session.Username, user)
 }

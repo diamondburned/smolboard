@@ -1,26 +1,51 @@
-.posts {
-	margin-left: var(--universal-margin);
+.uploader {
+	display: flex;
+	flex-direction: column;
+}
+
+.uploader input.small {
+	margin: 0;
+}
+
+.uploader input:last-child {
+	margin-top: var(--universal-margin);
+}
+
+.uploader input[type="file"]::-webkit-file-upload-button {
+	background: var(--button-back-color);
+	padding: calc(1 * var(--universal-padding)) calc(1.5 * var(--universal-padding));
+
+	border:  none;
+	border-radius: var(--universal-border-radius);
+}
+
+.logout {
+	display: flex;
+	align-items: center;
+}
+
+main.posts {
 	margin-top:  var(--universal-margin);
 }
 
-.posts .post.card {
+main.posts .post.card {
 	width: auto;
 	margin-left: 0;
 	margin-top:  0;
 	transition: linear 75ms;
 }
 
-.posts .post.card:hover {
+main.posts .post.card:hover {
 	-webkit-filter: brightness(90%) contrast(110%);
 }
 
-.posts .post a {
+main.posts .post a {
 	line-height: 0;
 	display: flex;
 	justify-content: center;
 }
 
-.posts .post a > * {
+main.posts .post a > * {
 	object-fit: cover;
 	height: 200px;
 	width: auto;
@@ -31,5 +56,8 @@
 	.posts .post a > * {
 		height: 300px;
 		max-width: 400px;
+	}
+	.gallery aside > *:first-child {
+		margin-top: 0;
 	}
 }

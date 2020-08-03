@@ -25,9 +25,67 @@ form.seamless {
 span[class^='icon-'] {
     background-position: center;
     background-repeat: no-repeat;
-    height: 0.5em;
-    width: auto;
     margin: auto;
     display: inline-flex;
-	vertical-align: text-bottom;
+}
+
+.content {
+	display: flex;
+	flex: 1 1; /* Expand right-most elem */
+	flex-direction: row;
+}
+
+aside {
+	width: 100%;
+	max-width: 300px;
+}
+
+aside > * {
+	background: var(--form-back-color);
+	color: var(--form-fore-color);
+
+	border: .0625rem solid var(--form-border-color);
+	border-radius: var(--universal-border-radius);
+
+	margin:  var(--universal-margin);
+	padding: calc(2 * var(--universal-padding)) var(--universal-padding);
+}
+
+aside > * button.small,
+aside > * a[role="button"].small {
+	margin: calc(0.5 * var(--universal-margin)) var(--universal-margin);
+	text-align: left;
+}
+
+aside span[class^="icon-"] {
+	width:  1em;
+	margin: 0 var(--universal-margin);
+}
+
+aside form {
+	display: flex;
+	flex-direction: column;
+}
+
+aside > * legend,
+aside form .tag {
+	padding: 0 var(--universal-padding);
+	margin:  0 var(--universal-margin);
+}
+
+aside > * legend {
+	margin-bottom: calc(var(--universal-margin) / 2);
+}
+
+@media (max-width: 600px) {
+	.content {
+		flex-direction: column-reverse;
+	}
+	main {
+		margin-left: var(--universal-margin) !important;
+	}
+	aside {
+		/* stretch all the way */
+		max-width: none !important;
+	}
 }

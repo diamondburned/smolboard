@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/mattn/go-shellwords"
 )
@@ -60,7 +62,30 @@ const (
 	// create unlimited tokens and inherits all permissions above. They are also
 	// the only person that can promote a person to Administrator.
 	PermissionOwner // if username == Owner
+
+	// reserved
+	permissionLen
 )
+
+var permissions = func() []Permission {
+	var permissions = make([]Permission, permissionLen)
+	for i := Permission(0); i < permissionLen; i++ {
+		permissions[i] = i
+	}
+	return permissions
+}()
+
+// AllPermissions returns all possible permissions in a slice. It starts with
+// the lowest (guest) and ends with the highest (owner).
+func AllPermissions() []Permission {
+	return permissions
+}
+
+// Int returns the permission as a stringed integer enum. This should only be
+// used for form values and the like.
+func (p Permission) StringInt() string {
+	return strconv.Itoa(int(p))
+}
 
 func (p Permission) String() string {
 	switch p {
@@ -100,6 +125,9 @@ func (p Permission) IsUserOrHasPermOver(min, target Permission, self, targetUser
 	return p.HasPermOverUser(min, target, self, targetUser)
 }
 
+// HasPermOverUser returns nil if the current user (self) has permission over
+// the target user with the given lowest permission required. If target is -1,
+// then PermissionAdministrator is assumed. This is done for deleted accounts.
 func (p Permission) HasPermOverUser(min, target Permission, self, targetUser string) error {
 	// Is this a valid permission?
 	if min < PermissionGuest || min > PermissionOwner {
@@ -116,6 +144,11 @@ func (p Permission) HasPermOverUser(min, target Permission, self, targetUser str
 	// same or lower than the target, then allow.
 	if self == targetUser && p >= min {
 		return nil
+	}
+
+	// Set a default target permission if it's not valid.
+	if target < 0 {
+		target = PermissionAdministrator
 	}
 
 	// At this point, p >= min. This means the user does indeed have more than
@@ -157,11 +190,11 @@ func (a PostAttribute) Value() (driver.Value, error) {
 }
 
 type Post struct {
-	ID          int64         `json:"id"          db:"id"`
-	Poster      *string       `json:"poster"      db:"poster"`
-	ContentType string        `json:"contenttype" db:"contenttype"`
-	Permission  Permission    `json:"permission"  db:"permission"`
-	Attributes  PostAttribute `json:"attributes"  db:"attributes"`
+	ID          int64         `json:"id"           db:"id"`
+	Poster      *string       `json:"poster"       db:"poster"`
+	ContentType string        `json:"content_type" db:"contenttype"`
+	Permission  Permission    `json:"permission"   db:"permission"`
+	Attributes  PostAttribute `json:"attributes"   db:"attributes"`
 }
 
 var (
@@ -171,11 +204,14 @@ var (
 	ErrUnsupportedFileType = httperr.New(415, "unsupported file type")
 )
 
+// SetPoster sets the post's poster.
 func (p *Post) SetPoster(poster string) {
 	cpy := poster
 	p.Poster = &cpy
 }
 
+// GetPoster returns an empty string if the poster is nil, or the poster's name
+// already dereferenced if not.
 func (p *Post) GetPoster() string {
 	if p.Poster == nil {
 		return ""
@@ -195,9 +231,19 @@ func (p Post) Filename() string {
 	return fmt.Sprintf("%s.%s", sid, parts[1])
 }
 
-// PostWithTags is the type for a post with queried tags.
-type PostWithTags struct {
+// CreatedTime returns the time the post was created. It's milliseconds
+// accurate.
+func (p Post) CreatedTime() time.Time {
+	const ms = int64(time.Millisecond)
+	return time.Unix(0, snowflake.ID(p.ID).Time()*ms)
+}
+
+// PostExtended is the type for a post with queried tags and the poster user.
+// This struct is returned from /posts/:id.
+type PostExtended struct {
 	Post
+	// PosterUser is non-nil if the poster is not null.
+	PosterUser *UserPart `json:"poster_user"`
 	// Tags is manually queried externally.
 	Tags []PostTag `json:"tags"`
 }
@@ -402,3 +448,22 @@ var (
 	ErrUsernameTaken      = httperr.New(409, "username taken")
 	ErrIllegalName        = httperr.New(403, "username contains illegal characters")
 )
+
+// CanChangePost returns nil if the user can change the given post. This is kept
+// in sync with the backend functions.
+func (u UserPart) CanChangePost(p Post) error {
+	return u.Permission.IsUserOrHasPermOver(
+		PermissionAdministrator, p.Permission, u.Username, p.GetPoster(),
+	)
+}
+
+// CanSetPostPermission returns nil if the user can change the post's permission
+// to target. This is kept in sync with the backend functions.
+func (u UserPart) CanSetPostPermission(p PostExtended, target Permission) error {
+	var posterPerm = Permission(-1)
+	if p.PosterUser != nil {
+		posterPerm = p.PosterUser.Permission
+	}
+
+	return u.Permission.HasPermOverUser(target, posterPerm, u.Username, p.GetPoster())
+}

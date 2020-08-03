@@ -3,17 +3,25 @@ nav {
 	margin-bottom: 0;
 }
 
+nav span[class^="icon-"] {
+	width:  0.5em;
+	height: 0.5em;
+}
+
 nav h2, h4 {
 	padding: 0;
 	margin: 0;
 }
 
 nav > a, nav > a:visited {
-	padding: 0 8px;
 	color: var(--fore-color) !important;
-	margin: calc(var(--universal-margin) / 2);
+
+	padding: 0 8px;
+	margin:  calc(var(--universal-margin) / 2);
 	margin-right: 0;
-	align-self: center;
+
+	display: flex;
+	align-items: center;
 }
 
 nav .user button {

@@ -1,10 +1,12 @@
 main.home {
 	display: flex;
+	flex:    0;
+	margin:  auto;
 
 	flex-direction:  column;
 	justify-content: center;
 
-	align-items: flex-start;
+	align-items: stretch;
 	align-self:  center;
 }
 
@@ -13,7 +15,27 @@ main.home h1 {
 }
 
 main.home .banner {
-	margin-bottom: 16px;
-	margin-left:  1em;
-	margin-right: 1em;
+	margin: calc(2 * var(--universal-margin));
+	margin-top: 0;
+}
+
+main.home .sidebar {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+main.home .user {
+	margin-left: var(--universal-margin);
+}
+
+main.home .sidebar button {
+	margin:  0;
+	padding: 0;
+	color: var(--a-link-color);
+	background: inherit;
+}
+
+main.home .sidebar button:hover {
+	text-decoration: underline;
 }

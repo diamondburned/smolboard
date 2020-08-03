@@ -23,8 +23,14 @@ var tmpl = render.BuildPage("home", render.Page{
 	},
 })
 
+type renderCtx struct {
+	render.CommonCtx
+}
+
 func Render(r *render.Request) (render.Render, error) {
 	return render.Render{
-		Body: tmpl.Render(r.Config),
+		Body: tmpl.Render(renderCtx{
+			CommonCtx: r.CommonCtx,
+		}),
 	}, nil
 }

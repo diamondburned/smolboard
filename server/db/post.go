@@ -169,7 +169,7 @@ func (d *Transaction) PostQuickGet(id int64) (*smolboard.Post, error) {
 
 // Post returns a single post with the ID. It returns a post not found error if
 // the post is not found or the user does not have permission to see the post.
-func (d *Transaction) Post(id int64) (*smolboard.PostWithTags, error) {
+func (d *Transaction) Post(id int64) (*smolboard.PostExtended, error) {
 	// Fast path: ignore invalid IDs.
 	if id == 0 {
 		return nil, smolboard.ErrPostNotFound
@@ -197,7 +197,19 @@ func (d *Transaction) Post(id int64) (*smolboard.PostWithTags, error) {
 		return nil, errors.Wrap(err, "Failed to get post")
 	}
 
-	var tags = []smolboard.PostTag{}
+	var poster *smolboard.UserPart
+	if post.Poster != nil {
+		poster, err = d.User(*post.Poster)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to get poster")
+		}
+	}
+
+	var postEx = smolboard.PostExtended{
+		Post:       post,
+		PosterUser: poster,
+		Tags:       []smolboard.PostTag{},
+	}
 
 	t, err := d.Queryx(`
 		SELECT COUNT(1), posttags.tagname FROM posttags
@@ -210,7 +222,7 @@ func (d *Transaction) Post(id int64) (*smolboard.PostWithTags, error) {
 	if err != nil {
 		// If we have no rows, then just return the post only.
 		if errors.Is(err, sql.ErrNoRows) {
-			return &smolboard.PostWithTags{Post: post, Tags: tags}, nil
+			return &postEx, nil
 		}
 
 		return nil, errors.Wrap(err, "Failed to get tags")
@@ -225,10 +237,10 @@ func (d *Transaction) Post(id int64) (*smolboard.PostWithTags, error) {
 			return nil, errors.Wrap(err, "Failed to scan tag")
 		}
 
-		tags = append(tags, tag)
+		postEx.Tags = append(postEx.Tags, tag)
 	}
 
-	return &smolboard.PostWithTags{Post: post, Tags: tags}, nil
+	return &postEx, nil
 }
 
 func (d *Transaction) SavePost(post *smolboard.Post) error {

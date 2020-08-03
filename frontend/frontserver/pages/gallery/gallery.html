@@ -1,29 +1,43 @@
 <div class="gallery">
 	{{ template "nav" . }}
 
-	<main class="posts row">
-		{{ range .Posts }}
-		<figure class="post card">
-			<a href="/posts/{{.ID}}">
-				{{ if (isImage .ContentType) }}
-				<img alt="Thumbnail" {{ $.ImageSizeAttr . }}
-					 src="{{ $.Session.PostThumbURL . }}"
-					 style="background-image: url('{{ $.InlineImage . }}')">
+	<div class="content">
+		<aside>
+			{{ if .Username }}
+			<form class="uploader" action="/posts" method="post">
+				<input type="file"   name="file" multiple>
+				<input type="submit" value="Upload" class="small">
+			</form>
+			<form class="logout" action="/signout" method="delete">
+				<button type="submit" class="small">Sign out</button>
+			</form>
+			{{ end }}
+		</aside>
 
-				{{ else if (isVideo .ContentType) }}
-				<video preload="metadata" src="{{ $.InlineImage . }}#t=0.1" />
-
-				{{ else }}
-				<div>
-					<p><span class=".icon-link"></span></p>
-					<p>{{ .ContentType }}</p>
-				</div>
-
-				{{ end }}
-			</a>
-		</figure>
-		{{ end }}
-	</main>
+		<main class="posts row">
+			{{ range .Posts }}
+			<figure class="post card">
+				<a href="/posts/{{.ID}}">
+					{{ if (isImage .ContentType) }}
+					<img alt="Thumbnail" {{ $.ImageSizeAttr . }}
+						 src="{{ $.Session.PostThumbURL . }}"
+						 style="background-image: url('{{ $.InlineImage . }}')">
+	
+					{{ else if (isVideo .ContentType) }}
+					<video preload="metadata" src="{{ $.InlineImage . }}#t=0.1" />
+	
+					{{ else }}
+					<div>
+						<p><span class=".icon-link"></span></p>
+						<p>{{ .ContentType }}</p>
+					</div>
+	
+					{{ end }}
+				</a>
+			</figure>
+			{{ end }}
+		</main>
+	</div>
 </div>
 
 {{ template "footer" }}

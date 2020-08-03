@@ -54,7 +54,7 @@ func (s *Session) User(username string) (u smolboard.UserPart, err error) {
 	return u, s.Client.Get("/users/"+url.PathEscape(username), &u, nil)
 }
 
-func (s *Session) Post(id int64) (p smolboard.PostWithTags, err error) {
+func (s *Session) Post(id int64) (p smolboard.PostExtended, err error) {
 	return p, s.Client.Get(fmt.Sprintf("/posts/%d", id), &p, nil)
 }
 

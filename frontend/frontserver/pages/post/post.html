@@ -25,18 +25,76 @@
 				{{ end }}
 			</form>
 
-			<div class="post-info">
-				<legend>Post</legend>
+			<div class="post-share">
+				<legend>Share</legend>
 
-				<!-- <div class="post-link"> -->
-				<!-- 	<label for="post-link">Post Link</label> -->
-				<!-- 	<input type="text" id="post-link" value=""> -->
-				<!-- </div> -->
+				<a role="button" class="post-link small"
+				   href="/posts/{{.ID}}"
+				>
+					<span class="icon-share secondary"></span>
+					<span>Post Link</span>
+				</a>
 
-				<!-- <div class="direct-link"> -->
-
-				<!-- </div> -->
+				<a role="button" class="original-image primary small"
+				   href="{{ $.Session.PostDirectURL .Post }}"
+				>
+					<span class="icon-link secondary inverse"></span>
+					<span>Original Image</span>
+				</a>
 			</div>
+
+			<div class="post-info">
+				<legend>Information</legend>
+
+				<div class="info-table">
+					<span class="key">ID</span>
+					<span class="value" id="id">{{ .ID }}</span>
+
+					<span class="key">Poster</span>
+					<span class="value" id="poster">{{ .Poster }}</span>
+
+					<span class="key">Date</span>
+					<input type="datetime-local" class="value" id="created-time" readonly
+						   value="{{ fmtTime .CreatedTime }}"
+					/>
+
+					<span class="key">Permission</span>
+					<span class="value" id="permission">{{ .Permission }}</span>
+				</div>
+			</div>
+
+			{{ if $.Username }}
+			<div class="post-actions modify-post">
+				<legend>Actions</legend>
+
+				<form class="seamless" action="/posts/{{.ID}}">
+					{{ if $.CanChangePost }}
+					<button type="submit" class="small secondary"
+							formmethod="delete"
+					>
+						<span class="icon-alert secondary inverse"></span>
+						<span>Delete Post</span>
+					</button>
+					{{ end }}
+				</form>
+			</div>
+
+			<div class="post-promote modify-post">
+				<legend>Permission</legend>
+
+				<form class="seamless" action="/posts/{{.ID}}/permission" method="patch">
+					{{ range $i, $permission := allPermissions }}
+					{{ if ($.CanSetPerm $permission) }}
+					<button type="submit" class="small"
+							name="p" value="{{ $permission.StringInt }}"
+					>
+						{{ $permission }}
+					</button>
+					{{ end }}
+					{{ end }}
+				</form>
+			</div>
+			{{ end }}
 		</aside>
 
 		<main>

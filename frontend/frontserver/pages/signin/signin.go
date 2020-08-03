@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -56,7 +57,8 @@ func minifyError(err error) string {
 func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(pageRender))
-	mux.Post("/", muxer.M(post))
+	mux.Post("/", muxer.M(handlePOST))
+	mux.Delete("/", muxer.M(handleDELETE))
 	return mux
 }
 
@@ -76,7 +78,7 @@ func pageRenderErr(r *render.Request, err error) (render.Render, error) {
 	}, nil
 }
 
-func post(r *render.Request) (render.Render, error) {
+func handlePOST(r *render.Request) (render.Render, error) {
 	var (
 		username = r.FormValue("username")
 		password = r.FormValue("password")
@@ -103,13 +105,20 @@ func post(r *render.Request) (render.Render, error) {
 
 	http.SetCookie(r.Writer, &ucookie)
 
-	// Bring the user back to the last page, or the homepage if there's none.
-	var last = r.Referer()
-	if last == "" || strings.Contains(last, "/signin") {
-		last = "/posts"
+	r.Redirect(r.Referer(), http.StatusFound)
+	return render.Empty, nil
+}
+
+func handleDELETE(r *render.Request) (render.Render, error) {
+	tcookie := r.TokenCookie()
+	if tcookie == nil {
+		return render.Empty, errors.New("Server error: token cookie not found")
 	}
 
-	r.Redirect(last, http.StatusFound)
+	// Set the expiry time to before current time. This sets the expiry date to
+	// year 0.
+	tcookie.Expires = time.Time{}
 
+	r.Redirect(r.Referer(), http.StatusFound)
 	return render.Empty, nil
 }

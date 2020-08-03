@@ -1,30 +1,3 @@
-.post > .content {
-	display: flex;
-	flex: 1 1; /* Expand right-most elem */
-	flex-direction: row;
-}
-
-.post aside {
-	width: 100%;
-	max-width: 300px;
-}
-
-.post aside form {
-	display: flex;
-	flex-direction: column;
-	margin-bottom: 0;
-}
-
-.post aside form legend,
-.post aside form .tag {
-	padding: 0 var(--universal-padding);
-	margin:  0 var(--universal-margin);
-}
-
-.post aside form legend {
-	margin-bottom: calc(var(--universal-margin) / 2);
-}
-
 .post aside form .tag {
 	background: inherit;
 	text-align: start;
@@ -38,27 +11,59 @@
 	height: 2em;
 }
 
+.post aside div.post-share {
+	display: flex;
+	flex-direction: column;
+}
+
+.post aside div.info-table {
+	display: grid;
+	grid-column-gap: var(--universal-margin);
+	grid-template-columns: auto 1fr;
+}
+
+.post aside span.key {
+	color: var(--secondary-fore-color);
+	text-align: right;
+}
+
+.post aside div.info-table input#created-time {
+	border:  none;
+	outline: none;
+	padding: 0;
+
+	color: var(--fore-color);
+
+	/* Hack to squeeze the width of the input properly */
+	display: inline-grid;
+	grid-template-rows: 1fr 0;
+	overflow: hidden;
+}
+
+.post aside div.modify-post {
+	transition: linear 80ms opacity;
+	opacity: 0.35;
+}
+.post aside div.modify-post:hover {
+	opacity: 1;
+}
+
+.post aside div.post-promote button {
+	padding: calc(0.5 * var(--universal-padding)) calc(1.5 * var(--universal-padding));
+}
+
 .post main {
 	margin: var(--universal-margin);
-	margin-left: 0;
+	margin-left:   0;
+	margin-bottom: 0;
+
+	height: 100%;
 	line-height: 0;
+
 	border: .0625rem solid var(--form-border-color);
 	border-radius: var(--universal-border-radius);
 }
 
 .post main > * {
 	width: 100%;
-}
-
-@media (max-width: 600px) {
-	.post > .content {
-		flex-direction: column;
-	}
-	.post main {
-		margin-left: var(--universal-margin);
-	}
-	.post aside {
-		/* stretch all the way */
-		max-width: none;
-	}
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/markbates/pkger"
 	"github.com/tdewolff/minify"
 	"github.com/tdewolff/minify/css"
@@ -23,6 +24,22 @@ var minifier = func() (minifier *minify.M) {
 	return
 }()
 
+var globalFns = template.FuncMap{
+	// htmlTime formats the given time to input date value's format.
+	"htmlTime": func(t time.Time) string {
+		return t.Format("2006-01-02T15:04")
+	},
+	"humanizeSize": func(bytes int64) string {
+		return humanize.Bytes(uint64(bytes))
+	},
+	"humanizeNumber": func(number int) string {
+		return humanize.Comma(int64(number))
+	},
+	"humanizeTime": func(t time.Time) string {
+		return humanize.Time(t)
+	},
+}
+
 type Component struct {
 	Template   string
 	Components map[string]Component
@@ -36,6 +53,7 @@ type Page struct {
 
 func BuildPage(n string, p Page) *Template {
 	tmpl := template.New(n)
+	tmpl = tmpl.Funcs(globalFns)
 	tmpl = tmpl.Funcs(p.Functions)
 	tmpl = template.Must(tmpl.Parse(string(read(p.Template))))
 

@@ -11,6 +11,7 @@ require (
 	github.com/diamondburned/duration v0.0.0-20200725205405-36cde0024396
 	github.com/didip/tollbooth/v6 v6.0.1
 	github.com/disintegration/imaging v1.6.2
+	github.com/dustin/go-humanize v1.0.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-test/deep v1.0.7
 	github.com/gorilla/schema v1.1.0

@@ -31,6 +31,10 @@ func NewSessionWithClient(c *Client) *Session {
 	}
 }
 
+func (s *Session) Endpoint(path string) string {
+	return s.Client.Endpoint() + path
+}
+
 func (s *Session) Signin(username, password string) (sm smolboard.Session, err error) {
 	return sm, s.Client.Post("/signin", &sm, url.Values{
 		"username": {username},
@@ -44,6 +48,10 @@ func (s *Session) Signup(username, password, token string) (sm smolboard.Session
 		"password": {password},
 		"token":    {token},
 	})
+}
+
+func (s *Session) Signout() error {
+	return s.Client.Post("/signout", nil, nil)
 }
 
 func (s *Session) Me() (u smolboard.UserPart, err error) {

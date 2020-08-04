@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -110,14 +109,9 @@ func handlePOST(r *render.Request) (render.Render, error) {
 }
 
 func handleDELETE(r *render.Request) (render.Render, error) {
-	tcookie := r.TokenCookie()
-	if tcookie == nil {
-		return render.Empty, errors.New("Server error: token cookie not found")
+	if err := r.Session.Signout(); err != nil {
+		return render.Empty, err
 	}
-
-	// Set the expiry time to before current time. This sets the expiry date to
-	// year 0.
-	tcookie.Expires = time.Time{}
 
 	r.Redirect(r.Referer(), http.StatusFound)
 	return render.Empty, nil

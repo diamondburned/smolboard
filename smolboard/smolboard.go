@@ -191,6 +191,7 @@ func (a PostAttribute) Value() (driver.Value, error) {
 
 type Post struct {
 	ID          int64         `json:"id"           db:"id"`
+	Size        int64         `json:"size"         db:"size"`
 	Poster      *string       `json:"poster"       db:"poster"`
 	ContentType string        `json:"content_type" db:"contenttype"`
 	Permission  Permission    `json:"permission"   db:"permission"`
@@ -198,10 +199,9 @@ type Post struct {
 }
 
 var (
-	ErrMissingExt          = httperr.New(400, "file does not have extension")
-	ErrPostNotFound        = httperr.New(404, "post not found")
-	ErrPageCountLimit      = httperr.New(400, "count is over 100 limit")
-	ErrUnsupportedFileType = httperr.New(415, "unsupported file type")
+	ErrMissingExt     = httperr.New(400, "file does not have extension")
+	ErrPostNotFound   = httperr.New(404, "post not found")
+	ErrPageCountLimit = httperr.New(400, "count is over 100 limit")
 )
 
 // SetPoster sets the post's poster.
@@ -295,8 +295,12 @@ type Query struct {
 	Tags   []string
 }
 
+// QueryTagLimit is the maximum number of tags allowed in a single query.
+const QueryTagLimit = 1024
+
 var (
 	ErrQueryAlreadyHasUser = httperr.New(400, "search query already has a user filter")
+	ErrQueryHasTooMayTags  = httperr.New(400, "search query has too many tags")
 )
 
 // AllPosts searches for all posts; it is a zero value instance of PostQuery.
@@ -304,9 +308,15 @@ var AllPosts = Query{}
 
 // SearchResults is the results returned from the queried posts.
 type SearchResults struct {
-	// Total is the total number of
-	Total int    `json:"total"`
+	// Posts contains the paginated list of posts.
 	Posts []Post `json:"posts"`
+	// Total is the total number of posts found.
+	Total int `json:"total"`
+	// Sizes is the total size of all posts found.
+	Sizes int64 `json:"sizes"`
+	// User is the user stated in the search query. It is nil if there's no user
+	// stated.
+	User *UserPart `json:"user,omitempty"`
 }
 
 // NoResults contains no search results; it is a zero value instance of
@@ -351,6 +361,11 @@ func ParsePostQuery(q string) (Query, error) {
 				return AllPosts, err
 			}
 			tags = append(tags, word)
+
+			// Exit if there are too many tag filters.
+			if len(tags) > QueryTagLimit {
+				return AllPosts, ErrQueryHasTooMayTags
+			}
 		}
 	}
 
@@ -430,8 +445,9 @@ const MinimumPassLength = 8
 
 // UserPart contains non-sensitive parts about the user.
 type UserPart struct {
-	Username   string     `db:"username"`
-	Permission Permission `db:"permission"`
+	Username   string     `db:"username"   json:"username"`
+	JoinTime   int64      `db:"jointime"   json:"join_time"`
+	Permission Permission `db:"permission" json:"permission"`
 }
 
 type User struct {
@@ -448,6 +464,11 @@ var (
 	ErrUsernameTaken      = httperr.New(409, "username taken")
 	ErrIllegalName        = httperr.New(403, "username contains illegal characters")
 )
+
+// Joined returns the time the user joined.
+func (u UserPart) Joined() time.Time {
+	return time.Unix(0, u.JoinTime)
+}
 
 // CanChangePost returns nil if the user can change the given post. This is kept
 // in sync with the backend functions.

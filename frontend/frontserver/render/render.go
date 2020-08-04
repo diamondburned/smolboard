@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/diamondburned/smolboard/client"
@@ -108,7 +109,7 @@ func (r *Request) Redirect(path string, code int) {
 
 	// If the URL matches the current path, then we should redirect somewhere
 	// else.
-	if path == r.URL.Path {
+	if u, err := url.Parse(path); err == nil && u.Path == r.URL.Path {
 		path = "/posts"
 	}
 

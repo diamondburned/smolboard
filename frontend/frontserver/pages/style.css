@@ -37,7 +37,7 @@ span[class^='icon-'] {
 
 aside {
 	width: 100%;
-	max-width: 300px;
+	max-width: 325px;
 }
 
 aside > * {
@@ -68,13 +68,25 @@ aside form {
 }
 
 aside > * legend,
-aside form .tag {
+aside form .tag,
+aside div.table {
 	padding: 0 var(--universal-padding);
 	margin:  0 var(--universal-margin);
 }
 
 aside > * legend {
 	margin-bottom: calc(var(--universal-margin) / 2);
+}
+
+aside div.table {
+	display: grid;
+	grid-column-gap: var(--universal-margin);
+	grid-template-columns: auto 1fr;
+}
+
+aside div.table span:nth-child(odd) {
+	color: var(--secondary-fore-color);
+	text-align: right;
 }
 
 @media (max-width: 600px) {

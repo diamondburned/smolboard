@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
 	"github.com/diamondburned/smolboard/server/http/internal/middleware"
@@ -20,7 +21,7 @@ import (
 )
 
 // ThumbnailSize controls the dimension of the thumbnail.
-const ThumbnailSize = 256
+const ThumbnailSize = 500
 
 var (
 	ErrFileNotFound = httperr.New(404, "file not found")
@@ -96,10 +97,13 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 
 	p, err := r.Tx.PostQuickGet(id)
 	if err != nil {
+		log.Println("Thumbnail: Quick get error:", err)
 		return nil, err
 	}
 
 	return func(w http.ResponseWriter) error {
+		time.Sleep(time.Second)
+
 		// Try serving the thumbnail and redirect the user to the original
 		// content if there's none available.
 		if !serveThumbnail(w, r, p.Filename()) {

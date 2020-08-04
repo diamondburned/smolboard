@@ -13,6 +13,7 @@ import (
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
 	"github.com/markbates/pkger"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -21,7 +22,7 @@ func init() {
 	)
 }
 
-const MaxThumbSize = 200
+const MaxThumbSize = 300
 
 var tmpl = render.BuildPage("home", render.Page{
 	Template: pkger.Include("/frontend/frontserver/pages/gallery/gallery.html"),
@@ -44,7 +45,27 @@ func genericMIME(mime string) string {
 
 type renderCtx struct {
 	render.CommonCtx
-	Posts []smolboard.Post
+	smolboard.SearchResults
+}
+
+func (r renderCtx) AllowedUploadPerms() []smolboard.Permission {
+	// Guests can't upload.
+	if r.User == nil || r.User.Permission == smolboard.PermissionGuest {
+		return nil
+	}
+
+	var allPerm = smolboard.AllPermissions()
+
+	// Iterate over all permissions except guest.
+	for i, perm := range allPerm[1:] {
+		if perm > r.User.Permission {
+			// Slice 0:i to allow guests.
+			return allPerm[:i]
+		}
+	}
+
+	// Highest permission since the larger-than condition is never reached.
+	return allPerm
 }
 
 func (r renderCtx) ImageSizeAttr(p smolboard.Post) template.HTMLAttr {
@@ -72,13 +93,14 @@ func (r renderCtx) InlineImage(p smolboard.Post) interface{} {
 func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(pageRender))
+	mux.Post("/", muxer.M(uploader))
 	return mux
 }
 
 func pageRender(r *render.Request) (render.Render, error) {
 	p, err := r.Session.PostSearch(r.FormValue("q"), 25, 0)
 	if err != nil {
-		return render.Render{}, err
+		return render.Empty, err
 	}
 
 	// Push thumbnails before page load.
@@ -87,12 +109,34 @@ func pageRender(r *render.Request) (render.Render, error) {
 	}
 
 	var renderCtx = renderCtx{
-		CommonCtx: r.CommonCtx,
-		Posts:     p.Posts,
+		CommonCtx:     r.CommonCtx,
+		SearchResults: p,
 	}
 
 	return render.Render{
 		Title: "Gallery",
 		Body:  tmpl.Render(renderCtx),
 	}, nil
+}
+
+func uploader(r *render.Request) (render.Render, error) {
+	q, err := http.NewRequest("POST", r.Session.Endpoint("/posts"), r.Body)
+	if err != nil {
+		return render.Empty, errors.Wrap(err, "Failed to create request")
+	}
+
+	// Copy all headers, including Content-Type.
+	for k, v := range r.Header {
+		q.Header[k] = v
+	}
+
+	p, err := r.Session.Client.Do(q)
+	if err != nil {
+		return render.Empty, err
+	}
+	// We don't need the posts responded.
+	p.Body.Close()
+
+	r.Redirect("/posts", http.StatusSeeOther)
+	return render.Empty, nil
 }

@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"log"
 	"strings"
 
 	"github.com/diamondburned/smolboard/smolboard"
@@ -42,6 +43,19 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 	// Limit count.
 	if count > 100 {
 		return smolboard.NoResults, smolboard.ErrPageCountLimit
+	}
+
+	var results = smolboard.SearchResults{
+		Posts: []smolboard.Post{},
+	}
+
+	// Get the user if any.
+	if pq.Poster != "" {
+		u, err := d.User(pq.Poster)
+		if err != nil {
+			return smolboard.NoResults, err
+		}
+		results.User = u
 	}
 
 	// The worst-case benchmark showed this sqlx.In query building step to take
@@ -95,10 +109,6 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 		return smolboard.NoResults, errors.Wrap(err, "Failed to construct SQL IN query")
 	}
 
-	var results = smolboard.SearchResults{
-		Posts: []smolboard.Post{},
-	}
-
 	q, err := d.Queryx(qstring, inargs...)
 	if err != nil {
 		return smolboard.NoResults, errors.Wrap(err, "Failed to query for posts")
@@ -113,23 +123,31 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 			return smolboard.NoResults, errors.Wrap(err, "Failed to scan post")
 		}
 
+		log.Println("Post size:", p.Size)
+
 		results.Posts = append(results.Posts, p)
 	}
 
-	// Build the sum count query.
-	countq := strings.Builder{}
-	countq.WriteString("SELECT COUNT(DISTINCT posts.id) ")
-	countq.WriteString(header.String())
-	countq.WriteString(footer.String())
+	// Save the sum count query up if there's no posts found.
+	if len(results.Posts) > 0 {
+		// Build the sum count query.
+		countq := strings.Builder{}
+		countq.WriteString(`
+			SELECT
+				COUNT(DISTINCT posts.id),
+				SUM(posts.size) * COUNT(DISTINCT posts.id) / COUNT(*) `)
+		countq.WriteString(header.String())
+		countq.WriteString(footer.String())
 
-	cstring, inargs, err := sqlx.In(countq.String(), footerArgs...)
-	if err != nil {
-		return smolboard.NoResults, errors.Wrap(err, "Failed to construct SQL IN query")
-	}
+		cstring, inargs, err := sqlx.In(countq.String(), footerArgs...)
+		if err != nil {
+			return smolboard.NoResults, errors.Wrap(err, "Failed to construct SQL IN query")
+		}
 
-	if err := d.QueryRow(cstring, inargs...).Scan(&results.Total); err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return smolboard.NoResults, errors.Wrap(err, "Failed to scan total posts found")
+		if err := d.QueryRow(cstring, inargs...).Scan(&results.Total, &results.Sizes); err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return smolboard.NoResults, errors.Wrap(err, "Failed to scan total posts found")
+			}
 		}
 	}
 
@@ -244,7 +262,7 @@ func (d *Transaction) Post(id int64) (*smolboard.PostExtended, error) {
 }
 
 func (d *Transaction) SavePost(post *smolboard.Post) error {
-	if post.ID == 0 || post.ContentType == "" {
+	if post.ID == 0 || post.ContentType == "" || post.Size == 0 {
 		return errors.New("cannot use empty post")
 	}
 
@@ -256,8 +274,8 @@ func (d *Transaction) SavePost(post *smolboard.Post) error {
 	post.SetPoster(d.Session.Username)
 
 	_, err := d.Exec(
-		"INSERT INTO posts VALUES (?, ?, ?, ?, ?)",
-		post.ID, post.Poster, post.ContentType, post.Permission, post.Attributes,
+		"INSERT INTO posts VALUES (?, ?, ?, ?, ?, ?)",
+		post.ID, post.Size, post.Poster, post.ContentType, post.Permission, post.Attributes,
 	)
 
 	if err != nil && errIsConstraint(err) {

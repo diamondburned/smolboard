@@ -100,6 +100,10 @@ func UploadPost(r tx.Request) (interface{}, error) {
 
 	for _, post := range posts {
 		if err := r.Tx.SavePost(post); err != nil {
+			// Something failed. Before we exit, we need to clean up all
+			// downloaded files.
+			r.Up.RemovePosts(posts)
+
 			return nil, errors.Wrap(err, "Failed to save post")
 		}
 	}

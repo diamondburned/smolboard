@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"time"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/nav"
@@ -32,11 +31,6 @@ var tmpl = render.BuildPage("home", render.Page{
 	Functions: map[string]interface{}{
 		"isImage": func(ctype string) bool { return genericMIME(ctype) == "image" },
 		"isVideo": func(ctype string) bool { return genericMIME(ctype) == "video" },
-
-		// fmtTime formats the given time to input date value's format.
-		"fmtTime": func(t time.Time) string {
-			return t.Format("2006-01-02T15:04")
-		},
 
 		"allPermissions": func() []smolboard.Permission {
 			return smolboard.AllPermissions()

@@ -26,10 +26,21 @@ const BufSz = int(datasize.MB)
 const MaxFiles = 128
 
 var (
-	ErrTooManyFiles    = httperr.New(400, "too many files; max 128")
-	ErrFileTooLarge    = httperr.New(413, "file too large")
-	ErrUnsupportedType = httperr.New(415, "unsupported file type")
+	ErrTooManyFiles = httperr.New(400, "too many files; max 128")
+	ErrFileTooLarge = httperr.New(413, "file too large")
 )
+
+type ErrUnsupportedType struct {
+	ContentType string
+}
+
+func (err ErrUnsupportedType) StatusCode() int {
+	return 415
+}
+
+func (err ErrUnsupportedType) Error() string {
+	return "unsupported file type " + err.ContentType
+}
 
 type UploadConfig struct {
 	FileDirectory string            `toml:"fileDirectory"`
@@ -61,6 +72,17 @@ func (c *UploadConfig) Validate() error {
 	}
 
 	return nil
+}
+
+func (c UploadConfig) RemovePosts(posts []*smolboard.Post) (err error) {
+	for _, post := range posts {
+		path := filepath.Join(c.FileDirectory, post.Filename())
+
+		if e := os.Remove(path); e != nil {
+			err = e
+		}
+	}
+	return
 }
 
 func (c UploadConfig) CreatePosts(headers []*multipart.FileHeader) ([]*smolboard.Post, error) {
@@ -102,7 +124,7 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post,
 	// Fast path.
 	if ctype := header.Header.Get("Content-Type"); ctype != "" {
 		if !c.ContentTypeAllowed(ctype) {
-			return nil, ErrUnsupportedType
+			return nil, ErrUnsupportedType{ctype}
 		}
 	}
 
@@ -123,7 +145,7 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post,
 	p := db.NewEmptyPost(r.ct)
 
 	// Download the file atomically.
-	if err := atomdl.Download(r, c.FileDirectory, p.Filename()); err != nil {
+	if err := atomdl.Download(r, c.FileDirectory, &p); err != nil {
 		return nil, errors.Wrap(err, "Failed to download file")
 	}
 
@@ -157,7 +179,7 @@ func (c UploadConfig) WrapReader(r io.Reader) (*limitedReader, error) {
 	}
 
 	if !c.ContentTypeAllowed(m.ctype) {
-		return nil, ErrUnsupportedType
+		return nil, ErrUnsupportedType{m.ctype}
 	}
 
 	var lim = c.MaxFileSize

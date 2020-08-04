@@ -36,6 +36,18 @@ func (d *Transaction) querySession(token string) (*smolboard.Session, error) {
 		return nil, smolboard.ErrSessionExpired
 	}
 
+	// If the token has just been renewed within an hour, then we probably don't
+	// need to do anything.
+
+	// This comparison subtracts the current time by an hour, then compare it to
+	// the time the token was made. If the subtracted time is still before the
+	// time the token was made, then that means it was made within an hour.
+	var madeTime = s.Deadline - int64(d.config.tokenLifespan)
+
+	if now.Add(-time.Hour).UnixNano() < madeTime {
+		return &s, nil
+	}
+
 	// Bump up the expiration time.
 	now = now.Add(d.config.tokenLifespan)
 	s.Deadline = now.UnixNano()

@@ -46,20 +46,23 @@
 			<div class="post-info">
 				<legend>Information</legend>
 
-				<div class="info-table">
-					<span class="key">ID</span>
-					<span class="value" id="id">{{ .ID }}</span>
+				<div class="post-table table">
+					<span>ID</span>
+					<span id="id">{{ .ID }}</span>
 
-					<span class="key">Poster</span>
-					<span class="value" id="poster">{{ .Poster }}</span>
+					<span>Size</span>
+					<span id="size">{{ humanizeSize .Size }}</span>
 
-					<span class="key">Date</span>
-					<input type="datetime-local" class="value" id="created-time" readonly
-						   value="{{ fmtTime .CreatedTime }}"
-					/>
+					<span>Poster</span>
+					<span id="poster">{{ .Poster }}</span>
 
-					<span class="key">Permission</span>
-					<span class="value" id="permission">{{ .Permission }}</span>
+					<span>Date</span>
+					<time datetime="{{ htmlTime .CreatedTime }}" id="created-time">
+						{{ humanizeTime .CreatedTime }}
+					</time>
+
+					<span>Permission</span>
+					<span id="permission">{{ .Permission }}</span>
 				</div>
 			</div>
 

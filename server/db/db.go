@@ -18,6 +18,7 @@ import (
 var migrations = []string{`
 	CREATE TABLE users (
 		username   TEXT    PRIMARY KEY,
+		jointime   INTEGER NOT NULL, -- unixnano 
 		passhash   BLOB    NOT NULL, -- bcrypt probably
 		permission INTEGER NOT NULL  -- Permission enum
 	);
@@ -42,12 +43,13 @@ var migrations = []string{`
 
 	CREATE TABLE posts (
 		id     INTEGER PRIMARY KEY, -- Snowflake
+		size   INTEGER,             -- Size in bytes
 		poster TEXT REFERENCES users(username)
 			ON UPDATE CASCADE
 			ON DELETE SET NULL,
 		contenttype TEXT    NOT NULL,
 		permission  INTEGER NOT NULL,
-		attributes  BLOB
+		attributes  BLOB    NOT NULL -- can be {}
 	);
 
 	CREATE TABLE posttags (

@@ -61,7 +61,7 @@ type Authentication struct {
 func Signin(r tx.Request) (interface{}, error) {
 	// If already signed in.
 	if !r.Tx.Session.IsZero() {
-		return nil, nil
+		return &r.Tx.Session, nil
 	}
 
 	var auth Authentication

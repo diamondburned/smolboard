@@ -3,11 +3,51 @@
 
 	<div class="content">
 		<aside>
-			{{ if .Username }}
-			<form class="uploader" action="/posts" method="post">
-				<input type="file"   name="file" multiple>
+			<div class="gallery-info">
+				<legend>Gallery Information</legend>
+
+				<div class="gallery-table table">
+					<span>Total</span>
+					<span id="total">{{ humanizeNumber .Total }}</span>
+
+					<span>Size</span>
+					<span id="size">{{ humanizeSize .Sizes }}</span>
+				</div>
+			</div>
+
+			{{ with .User }}
+			<div class="search-user-info">
+				<legend>User Information</legend>
+
+				<div class="user-table table">
+					<span>Joined</span>
+					<time datetime="{{ htmlTime .Joined }}" id="join-time">
+						{{ humanizeTime .Joined }}
+					</time>
+
+					<span>Permission</span>
+					<span id="permission">{{ .Permission }}</span>
+				</div>
+			</div>
+			{{ end }}
+
+			{{ with .AllowedUploadPerms }}
+			<form class="uploader"
+				  action="/posts" method="post"
+				  enctype="multipart/form-data"
+			>
+				<input  type="file"     name="file" multiple>
+				<select id="permission" name="p">
+					{{ range . }}
+					<option value="{{ .StringInt }}">{{ . }}</option>
+					{{ end }}
+				</select>
+
 				<input type="submit" value="Upload" class="small">
 			</form>
+			{{ end }}
+
+			{{ if .Username }}
 			<form class="logout" action="/signout" method="delete">
 				<button type="submit" class="small">Sign out</button>
 			</form>

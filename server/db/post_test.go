@@ -32,6 +32,7 @@ func TestPosts(t *testing.T) {
 
 		for i := 0; i < len(posts); i++ {
 			p := NewEmptyPost("image/png")
+			p.Size = 1
 			p.Attributes = smolboard.PostAttribute{
 				Width:    1920,
 				Height:   1080,
@@ -149,6 +150,7 @@ func TestNormalUploadedPosts(t *testing.T) {
 
 		for i := 0; i < len(posts); i++ {
 			p := NewEmptyPost("image/png")
+			p.Size = 1
 
 			if err := tx.SavePost(&p); err != nil {
 				t.Fatal("Failed to save post:", err)
@@ -208,6 +210,7 @@ func TestPostNullOwner(t *testing.T) {
 	}
 
 	p := NewEmptyPost("image/png")
+	p.Size = 1
 
 	t.Run("Setup", func(t *testing.T) {
 		tx := testBeginTx(t, d, u.AuthToken)
@@ -238,6 +241,7 @@ func TestPostNullOwner(t *testing.T) {
 func TestPostPermissions(t *testing.T) {
 	for perm, test := range testPermissionSet {
 		p := NewEmptyPost("image/png")
+		p.Size = 1
 
 		t.Run(perm.String(), func(t *testing.T) {
 			d := newTestDatabase(t)
@@ -397,6 +401,7 @@ func TestPostTags(t *testing.T) {
 	tx := testBeginTx(t, d, owner.AuthToken)
 
 	p := NewEmptyPost("image/png")
+	p.Size = 1
 
 	if err := tx.SavePost(&p); err != nil {
 		t.Fatal("Failed to save post:", err)
@@ -492,6 +497,7 @@ func TestPostSearch(t *testing.T) {
 	tx := testBeginTx(t, d, owner.AuthToken)
 
 	p := NewEmptyPost("image/png")
+	p.Size = 1
 
 	if err := tx.SavePost(&p); err != nil {
 		t.Fatal("Failed to save post:", err)
@@ -512,6 +518,10 @@ func TestPostSearch(t *testing.T) {
 
 		if s.Total != 1 {
 			t.Fatal("Invalid total:", s.Total)
+		}
+
+		if s.Sizes != 1 {
+			t.Fatal("Invaid size:", s.Sizes)
 		}
 
 		if len(s.Posts) != 1 {

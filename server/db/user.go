@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/pkg/errors"
@@ -37,7 +38,11 @@ func (d *Transaction) createUser(username, password string, perm smolboard.Permi
 		return errors.Wrap(err, "Failed to generate password")
 	}
 
-	_, err = d.Exec("INSERT INTO users VALUES (?, ?, ?)", username, p, perm)
+	_, err = d.Exec(
+		"INSERT INTO users VALUES (?, ?, ?, ?)",
+		username, time.Now().UnixNano(), p, perm,
+	)
+
 	if err != nil {
 		// Unique constraint means we're attempting to make a username that's
 		// colliding. We could return an error close to that.
@@ -59,18 +64,17 @@ func (d *Transaction) User(username string) (*smolboard.UserPart, error) {
 	}
 
 	u := smolboard.UserPart{Username: username}
-	r := d.QueryRowx("SELECT permission FROM users WHERE username = ?", username)
+	r := d.QueryRowx("SELECT jointime, permission FROM users WHERE username = ?", username)
 
-	err := r.Scan(&u.Permission)
-	if err == nil {
-		return &u, nil
+	if err := r.Scan(&u.JoinTime, &u.Permission); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, smolboard.ErrUserNotFound
+		}
+
+		return nil, errors.Wrap(err, "Failed to scan row to user")
 	}
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, smolboard.ErrUserNotFound
-	}
-
-	return nil, errors.Wrap(err, "Failed to scan row to user")
+	return &u, nil
 }
 
 func (d *Transaction) Me() (*smolboard.UserPart, error) {

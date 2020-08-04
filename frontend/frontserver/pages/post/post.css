@@ -16,30 +16,6 @@
 	flex-direction: column;
 }
 
-.post aside div.info-table {
-	display: grid;
-	grid-column-gap: var(--universal-margin);
-	grid-template-columns: auto 1fr;
-}
-
-.post aside span.key {
-	color: var(--secondary-fore-color);
-	text-align: right;
-}
-
-.post aside div.info-table input#created-time {
-	border:  none;
-	outline: none;
-	padding: 0;
-
-	color: var(--fore-color);
-
-	/* Hack to squeeze the width of the input properly */
-	display: inline-grid;
-	grid-template-rows: 1fr 0;
-	overflow: hidden;
-}
-
 .post aside div.modify-post {
 	transition: linear 80ms opacity;
 	opacity: 0.35;

@@ -102,6 +102,14 @@ func (c *Client) SetCookies(cookies []*http.Cookie) {
 	c.Jar.SetCookies(c.host, cookies)
 }
 
+// HostURL returns a copy of the client's host URL with the Path pointing to
+// /api/v1.
+func (c *Client) HostURL() *url.URL {
+	cpy := *c.host
+	cpy.Path = "/api/v1"
+	return &cpy
+}
+
 // Host returns the stringified URL.
 func (c *Client) Host() string {
 	return c.host.String()
@@ -120,7 +128,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 	r, err := c.Client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "Failed to send request")
 	}
 
 	if r.StatusCode < 200 || r.StatusCode > 299 {
@@ -157,7 +165,8 @@ func (c *Client) DoJSON(req *http.Request, resp interface{}) error {
 	defer q.Body.Close()
 
 	if resp != nil {
-		return json.NewDecoder(q.Body).Decode(resp)
+		err := json.NewDecoder(q.Body).Decode(resp)
+		return errors.Wrap(err, "Failed to decode JSON")
 	}
 
 	return nil
@@ -174,20 +183,17 @@ func (c *Client) Post(path string, resp interface{}, v url.Values) error {
 }
 
 func (c *Client) Get(path string, resp interface{}, v url.Values) error {
-	var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
-
-	r, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return errors.Wrap(err, "Failed to create request")
-	}
-
-	return c.DoJSON(r, resp)
+	return c.Request("GET", path, resp, v)
 }
 
 func (c *Client) Delete(path string, resp interface{}, v url.Values) error {
+	return c.Request("DELETE", path, resp, v)
+}
+
+func (c *Client) Request(method, path string, resp interface{}, v url.Values) error {
 	var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
 
-	r, err := http.NewRequest("DELETE", url, nil)
+	r, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return errors.Wrap(err, "Failed to create request")
 	}

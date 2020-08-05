@@ -7,10 +7,20 @@
 
 Root
 
+### Dependencies
+
+- libsqlite3
+- FFmpeg (optional)
+- FFprobe (optional)
+
 ## Client
 
 `client/`
 
 ## Frontend Client
 
-`frontend/` - Vugu and wasm
+`frontend/` - templating
+
+### Dependencies
+
+- libjpeg

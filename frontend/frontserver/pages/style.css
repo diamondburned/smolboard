@@ -29,6 +29,10 @@ span[class^='icon-'] {
     display: inline-flex;
 }
 
+[type="checkbox"].modal+div .card .modal-close {
+	padding: calc(var(--universal-padding) / 2);
+}
+
 .content {
 	display: flex;
 	flex: 1 1; /* Expand right-most elem */
@@ -52,9 +56,18 @@ aside > * {
 }
 
 aside > * button.small,
+aside > *  [type="submit"].small,
 aside > * a[role="button"].small {
-	margin: calc(0.5 * var(--universal-margin)) var(--universal-margin);
-	text-align: left;
+	margin:  calc(0.5 * var(--universal-margin))  var(--universal-margin);
+	padding: calc(0.5 * var(--universal-padding)) calc(1.5 * var(--universal-padding));
+}
+
+aside .sensitive {
+	transition: linear 80ms opacity;
+	opacity: 0.35;
+}
+aside .sensitive:hover {
+	opacity: 1;
 }
 
 aside span[class^="icon-"] {
@@ -67,6 +80,7 @@ aside form {
 	flex-direction: column;
 }
 
+aside > * p,
 aside > * legend,
 aside form .tag,
 aside div.table {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
@@ -33,6 +34,13 @@ var tmpl = render.BuildPage("home", render.Page{
 	Functions: map[string]interface{}{
 		"isImage": func(ctype string) bool { return genericMIME(ctype) == "image" },
 		"isVideo": func(ctype string) bool { return genericMIME(ctype) == "video" },
+
+		"negInf": func(i int) string {
+			if i == -1 {
+				return "∞"
+			}
+			return strconv.Itoa(i)
+		},
 	},
 })
 
@@ -46,6 +54,9 @@ func genericMIME(mime string) string {
 type renderCtx struct {
 	render.CommonCtx
 	smolboard.SearchResults
+
+	// Tokens is non-nil if IsAdmin returns true.
+	smolboard.TokenList
 }
 
 func (r renderCtx) AllowedUploadPerms() []smolboard.Permission {
@@ -68,7 +79,7 @@ func (r renderCtx) AllowedUploadPerms() []smolboard.Permission {
 	return allPerm
 }
 
-func (r renderCtx) ImageSizeAttr(p smolboard.Post) template.HTMLAttr {
+func (r renderCtx) SizeAttr(p smolboard.Post) template.HTMLAttr {
 	if p.Attributes.Height == 0 || p.Attributes.Width == 0 {
 		return ""
 	}
@@ -88,6 +99,26 @@ func (r renderCtx) InlineImage(p smolboard.Post) interface{} {
 	}
 
 	return r.Session.PostThumbURL(p)
+}
+
+// IsAdmin returns true if the current user is an admin.
+func (r renderCtx) IsAdmin() bool {
+	return true &&
+		r.User != nil &&
+		r.User.Username == r.Username &&
+		r.User.Permission >= smolboard.PermissionAdministrator
+}
+
+func (r renderCtx) MinTokenUses() int {
+	if !r.IsAdmin() {
+		return 0
+	}
+
+	if r.User.Permission == smolboard.PermissionOwner {
+		return -1
+	}
+
+	return 1
 }
 
 func Mount(muxer render.Muxer) http.Handler {
@@ -111,6 +142,14 @@ func pageRender(r *render.Request) (render.Render, error) {
 	var renderCtx = renderCtx{
 		CommonCtx:     r.CommonCtx,
 		SearchResults: p,
+	}
+
+	if renderCtx.IsAdmin() {
+		t, err := r.Session.ListTokens()
+		if err != nil {
+			return render.Empty, errors.Wrap(err, "Failed to get tokens")
+		}
+		renderCtx.TokenList = t
 	}
 
 	return render.Render{
@@ -139,4 +178,30 @@ func uploader(r *render.Request) (render.Render, error) {
 
 	r.Redirect("/posts", http.StatusSeeOther)
 	return render.Empty, nil
+}
+
+func MountTokenRoutes(muxer render.Muxer) http.Handler {
+	mux := chi.NewMux()
+	mux.Post("/", muxer.M(createToken))
+	mux.Post("/{token}/delete", muxer.M(deleteToken))
+	return mux
+}
+
+func createToken(r *render.Request) (render.Render, error) {
+	u, err := strconv.Atoi(r.FormValue("uses"))
+	if err != nil {
+		return render.Empty, errors.Wrap(err, "Failed to parse uses value")
+	}
+
+	_, err = r.Session.CreateToken(u)
+	if err != nil {
+		return render.Empty, errors.Wrap(err, "Failed to create a token")
+	}
+
+	r.Redirect(r.Referer(), http.StatusSeeOther)
+	return render.Empty, nil
+}
+
+func deleteToken(r *render.Request) (render.Render, error) {
+	panic("Implement me")
 }

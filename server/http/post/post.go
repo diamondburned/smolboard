@@ -99,6 +99,9 @@ func UploadPost(r tx.Request) (interface{}, error) {
 	}
 
 	for _, post := range posts {
+		// Set the post's permission.
+		post.Permission = p.Permission
+
 		if err := r.Tx.SavePost(post); err != nil {
 			// Something failed. Before we exit, we need to clean up all
 			// downloaded files.

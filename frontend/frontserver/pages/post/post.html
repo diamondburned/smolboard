@@ -67,25 +67,23 @@
 			</div>
 
 			{{ if $.Username }}
-			<div class="post-actions modify-post">
+			<div class="post-actions sensitive">
 				<legend>Actions</legend>
 
-				<form class="seamless" action="/posts/{{.ID}}">
-					{{ if $.CanChangePost }}
-					<button type="submit" class="small secondary"
-							formmethod="delete"
-					>
+				{{ if $.CanChangePost }}
+				<form class="seamless" action="/posts/{{.ID}}/delete" method="post">
+					<button type="submit" class="small secondary">
 						<span class="icon-alert secondary inverse"></span>
 						<span>Delete Post</span>
 					</button>
-					{{ end }}
 				</form>
+				{{ end }}
 			</div>
 
-			<div class="post-promote modify-post">
+			<div class="post-promote sensitive">
 				<legend>Permission</legend>
 
-				<form class="seamless" action="/posts/{{.ID}}/permission" method="patch">
+				<form class="seamless" action="/posts/{{.ID}}/permission" method="post">
 					{{ range $i, $permission := allPermissions }}
 					{{ if ($.CanSetPerm $permission) }}
 					<button type="submit" class="small"

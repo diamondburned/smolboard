@@ -30,7 +30,7 @@ func download(r io.Reader, dir, file string) (tmpname string, n int64, err error
 
 	n, err = io.Copy(w, r)
 	if err != nil {
-		return tmpname, 0, errors.Wrap(err, "Failed to save uploading file")
+		return tmpname, 0, errors.Wrap(err, "Failed to write file to disk")
 	}
 
 	if err := os.Rename(tmpname, filepath.Join(dir, file)); err != nil {

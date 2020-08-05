@@ -18,7 +18,7 @@ allowedTypes  = [       # will use the second part for file extension
 	# https://mimesniff.spec.whatwg.org/#matching-an-image-type-pattern
 	"image/jpeg", "image/png", "image/gif", "image/webp",
 	# https://mimesniff.spec.whatwg.org/#matching-an-audio-or-video-type-pattern
-	"video/avi", "video/mp4", "video/webm", "video/x-matroska",
+	"video/avi", "video/mp4", "video/webm", "video/x-matroska"
 ]
 
 # Size is calculated as such:
@@ -31,4 +31,4 @@ allowedTypes  = [       # will use the second part for file extension
  "image/png" = "20MB"
  "image/gif" = "50MB"
  "video"     = "250MB"
- "video/mp4" = "500MB
+ "video/mp4" = "500MB"

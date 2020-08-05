@@ -426,6 +426,11 @@ func (s Session) IsZero() bool {
 	return s.ID == 0
 }
 
+type TokenList struct {
+	Tokens  []Token
+	MaxUses int
+}
+
 type Token struct {
 	Token     string `json:"token"     db:"token"`
 	Creator   string `json:"creator"   db:"creator"`
@@ -433,8 +438,9 @@ type Token struct {
 }
 
 var (
-	ErrUnknownToken = httperr.New(401, "unknown token")
-	ErrOverUseLimit = httperr.New(400, "requested use is over limit")
+	ErrUnknownToken   = httperr.New(401, "unknown token")
+	ErrOverUseLimit   = httperr.New(400, "requested use is over limit")
+	ErrZeroNotAllowed = httperr.New(400, "zero use not allowed")
 )
 
 // HashCost controls the bcrypt hash cost.

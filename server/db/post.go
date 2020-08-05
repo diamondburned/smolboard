@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"log"
 	"strings"
 
 	"github.com/diamondburned/smolboard/smolboard"
@@ -123,8 +122,6 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 			return smolboard.NoResults, errors.Wrap(err, "Failed to scan post")
 		}
 
-		log.Println("Post size:", p.Size)
-
 		results.Posts = append(results.Posts, p)
 	}
 
@@ -201,7 +198,7 @@ func (d *Transaction) Post(id int64) (*smolboard.PostExtended, error) {
 	r := d.QueryRowx(
 		// Select the post only when the current user is the poster OR the
 		// user's permission is less than or equal to the post's.
-		"SELECT * FROM posts WHERE id = ? AND (poster = ? OR permission <= ?)",
+		"SELECT * FROM posts WHERE id = ? AND (poster = ? OR permission <= ?) LIMIT 1",
 		id, d.Session.Username, p,
 	)
 

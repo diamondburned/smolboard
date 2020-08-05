@@ -35,6 +35,7 @@ func New(serverHost string, cfg FrontConfig) (http.Handler, error) {
 	r.Get("/", home.Render)
 	r.Mount("/posts", gallery.Mount)
 	r.Mount("/posts/{id}", post.Mount)
+	r.Mount("/tokens", gallery.MountTokenRoutes)
 	r.Mount("/signin", signin.Mount)
 
 	return r, nil

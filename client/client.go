@@ -173,13 +173,7 @@ func (c *Client) DoJSON(req *http.Request, resp interface{}) error {
 }
 
 func (c *Client) Post(path string, resp interface{}, v url.Values) error {
-	r, err := http.NewRequest("POST", c.Endpoint()+path, strings.NewReader(v.Encode()))
-	if err != nil {
-		return errors.Wrap(err, "Failed to create request")
-	}
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	return c.DoJSON(r, resp)
+	return c.Request("POST", path, resp, v)
 }
 
 func (c *Client) Get(path string, resp interface{}, v url.Values) error {
@@ -190,10 +184,20 @@ func (c *Client) Delete(path string, resp interface{}, v url.Values) error {
 	return c.Request("DELETE", path, resp, v)
 }
 
-func (c *Client) Request(method, path string, resp interface{}, v url.Values) error {
-	var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
+func (c *Client) Request(method, path string, resp interface{}, v url.Values) (err error) {
+	var r *http.Request
 
-	r, err := http.NewRequest(method, url, nil)
+	switch method {
+	case http.MethodPatch, http.MethodPost, http.MethodPut:
+		r, err = http.NewRequest(method, c.Endpoint()+path, strings.NewReader(v.Encode()))
+		if err == nil {
+			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
+	default:
+		var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
+		r, err = http.NewRequest(method, url, nil)
+	}
+
 	if err != nil {
 		return errors.Wrap(err, "Failed to create request")
 	}

@@ -36,6 +36,8 @@
 				  action="/posts" method="post"
 				  enctype="multipart/form-data"
 			>
+				<legend>Upload Files</legend>
+
 				<input  type="file"     name="file" multiple>
 				<select id="permission" name="p">
 					{{ range . }}
@@ -45,6 +47,31 @@
 
 				<input type="submit" value="Upload" class="small">
 			</form>
+			{{ end }}
+
+			{{ if .IsAdmin }}
+			<div class="tokens">
+				<legend>Invite Tokens</legend>
+
+				<div class="token-list">
+					{{ template "tokenList" .Tokens }}
+				</div>
+
+				<form class="add-token seamless" action="/tokens" method="post">
+					{{ $min := .MinTokenUses }}
+
+					<p class="info">
+						<span>Create Token</span>
+						<span class="range">{{ $min }} to {{ .MaxUses }}</span>
+					</p>
+
+					<div class="form-group">
+						<input type="number" class="small" name="uses"
+							   value="1" min="{{ $min }}" max="{{ .MaxUses }}">
+						<input type="submit" class="small" value="＋">
+					</div>
+				</form>
+			</div>
 			{{ end }}
 
 			{{ if .Username }}
@@ -59,12 +86,14 @@
 			<figure class="post card">
 				<a href="/posts/{{.ID}}">
 					{{ if (isImage .ContentType) }}
-					<img alt="Thumbnail" {{ $.ImageSizeAttr . }}
+					<img alt="Image" {{ $.SizeAttr . }}
 						 src="{{ $.Session.PostThumbURL . }}"
 						 style="background-image: url('{{ $.InlineImage . }}')">
 	
 					{{ else if (isVideo .ContentType) }}
-					<video preload="metadata" src="{{ $.InlineImage . }}#t=0.1" />
+					<video alt="Video" preload="metadata" {{ $.SizeAttr . }}
+						   src="{{ $.Session.PostThumbURL . }}#t=0.1"
+						   style="background-image: url('{{ $.InlineImage . }}')">
 	
 					{{ else }}
 					<div>
@@ -81,3 +110,42 @@
 </div>
 
 {{ template "footer" }}
+
+{{ define "tokenList" }}
+
+{{ range $index, $token := . }}
+	<div class="token">
+		<label for="token_{{$index}}">
+			<span id="creator">{{ $token.Creator }}</span>
+			<span id="remaining">{{ negInf $token.Remaining }}</span>
+		</label>
+
+		<input type="checkbox" id="token_{{$index}}" class="modal">
+		<div role="dialog">
+			<div class="card">
+				<label for="token_{{$index}}" class="modal-close"></label>
+
+				<h3 class="section">
+					<small>Invite Token</small>
+					{{ $token.Token }}
+				</h3>
+
+				<form class="section token-actions seamless">
+					<legend>Actions</legend>
+
+					<button type="submit" class="delete-token secondary"
+							formmethod="post"
+							formaction="/tokens/{{$token.Token}}/delete"
+					>
+						<span class="icon-alert secondary inverse"></span>
+						<span>Delete Token</span>
+					</button>
+				</form>
+			</div>
+		</div>
+	</div>
+{{ else }}
+	<p class="no-token-msg">No tokens.</p>
+{{ end }}
+
+{{ end }}

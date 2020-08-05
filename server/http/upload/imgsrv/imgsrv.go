@@ -3,13 +3,11 @@ package imgsrv
 import (
 	"bytes"
 	"image/png"
-	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
 	"github.com/diamondburned/smolboard/server/http/internal/middleware"
@@ -45,7 +43,6 @@ func Mount(m tx.Middlewarer) http.Handler {
 
 func ServePost(r tx.Request) (interface{}, error) {
 	id, name := getStored(r)
-	log.Printf("id=%d,name=%q\n", id, name)
 
 	p, err := r.Tx.PostQuickGet(id)
 	if err != nil {
@@ -92,18 +89,14 @@ var encopts = []imaging.EncodeOption{
 }
 
 func ServeThumbnail(r tx.Request) (interface{}, error) {
-	id, name := getStored(r)
-	log.Printf("id=%d,name=%q\n", id, name)
+	id, _ := getStored(r)
 
 	p, err := r.Tx.PostQuickGet(id)
 	if err != nil {
-		log.Println("Thumbnail: Quick get error:", err)
 		return nil, err
 	}
 
 	return func(w http.ResponseWriter) error {
-		time.Sleep(time.Second)
-
 		// Try serving the thumbnail and redirect the user to the original
 		// content if there's none available.
 		if !serveThumbnail(w, r, p.Filename()) {

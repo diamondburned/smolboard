@@ -13,6 +13,7 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/diamondburned/smolboard/server/db"
 	"github.com/diamondburned/smolboard/server/http/upload/atomdl"
+	"github.com/diamondburned/smolboard/server/http/upload/ffprobe"
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/disintegration/imaging"
@@ -25,10 +26,7 @@ const BufSz = int(datasize.MB)
 
 const MaxFiles = 128
 
-var (
-	ErrTooManyFiles = httperr.New(400, "too many files; max 128")
-	ErrFileTooLarge = httperr.New(413, "file too large")
-)
+var ErrTooManyFiles = httperr.New(400, "too many files; max 128")
 
 type ErrUnsupportedType struct {
 	ContentType string
@@ -40,6 +38,28 @@ func (err ErrUnsupportedType) StatusCode() int {
 
 func (err ErrUnsupportedType) Error() string {
 	return "unsupported file type " + err.ContentType
+}
+
+type ErrFileTooLarge struct {
+	max int64
+	ctp string
+}
+
+func (err ErrFileTooLarge) StatusCode() int {
+	return 413
+}
+
+func (err ErrFileTooLarge) Error() string {
+	var str = fmt.Sprintf(
+		"File too large, maximum size allowed is %s",
+		datasize.ByteSize(err.max).HumanReadable(),
+	)
+
+	if err.ctp != "" {
+		str += " for type " + err.ctp
+	}
+
+	return str
 }
 
 type UploadConfig struct {
@@ -118,7 +138,7 @@ func (c UploadConfig) CreatePosts(headers []*multipart.FileHeader) ([]*smolboard
 func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post, error) {
 	// Fast path.
 	if header.Size > int64(c.MaxFileSize) {
-		return nil, ErrFileTooLarge
+		return nil, ErrFileTooLarge{max: int64(c.MaxFileSize)}
 	}
 
 	// Fast path.
@@ -146,12 +166,12 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post,
 
 	// Download the file atomically.
 	if err := atomdl.Download(r, c.FileDirectory, &p); err != nil {
-		return nil, errors.Wrap(err, "Failed to download file")
+		return nil, errors.Wrap(err, "Failed to save file")
 	}
 
 	var downloaded = filepath.Join(c.FileDirectory, p.Filename())
 
-	// Blurhash time. This hash is optional, so it's fine being empty.
+	// Try parsing the file as an image.
 	i, err := imaging.Open(downloaded, imaging.AutoOrientation(true))
 	if err == nil {
 		bounds := i.Bounds()
@@ -164,6 +184,22 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post,
 		h, err := blurhash.Encode(4, 3, i)
 		if err == nil {
 			p.Attributes.Blurhash = h
+		}
+	} else {
+		// Failed to parse above as a normal image. Resort to shelling out, if
+		// possible.
+		s, err := ffprobe.ProbeSize(downloaded)
+		if err == nil {
+			p.Attributes.Width = s.Width
+			p.Attributes.Height = s.Height
+		}
+
+		i, err := ffprobe.FirstFrame(downloaded, 50, 50)
+		if err == nil {
+			h, err := blurhash.Encode(4, 3, i)
+			if err == nil {
+				p.Attributes.Blurhash = h
+			}
 		}
 	}
 
@@ -232,6 +268,7 @@ func (r *Reader) ContentType() string {
 type limitedReader struct {
 	rd io.LimitedReader
 	wt io.WriterTo
+	mx int64
 	ct string // internal only
 }
 
@@ -240,13 +277,16 @@ type LimitedReaderer interface {
 	io.WriterTo
 }
 
-var _ LimitedReaderer = (*bufio.Reader)(nil)
-var _ LimitedReaderer = (*limitedReader)(nil)
+var (
+	_ LimitedReaderer = (*bufio.Reader)(nil)
+	_ LimitedReaderer = (*limitedReader)(nil)
+)
 
 func NewLimitedReader(r LimitedReaderer, max int64) *limitedReader {
 	return &limitedReader{
 		rd: io.LimitedReader{R: r, N: max + 1},
 		wt: r,
+		mx: max,
 	}
 }
 
@@ -254,7 +294,7 @@ func (r *limitedReader) Read(b []byte) (int, error) {
 	n, err := r.rd.Read(b)
 
 	if r.rd.N <= 0 {
-		return n, ErrFileTooLarge
+		return n, ErrFileTooLarge{max: r.mx, ctp: r.ct}
 	}
 
 	return n, err
@@ -265,7 +305,7 @@ func (r *limitedReader) WriteTo(w io.Writer) (int64, error) {
 	r.rd.N -= n
 
 	if r.rd.N <= 0 {
-		return n, ErrFileTooLarge
+		return n, ErrFileTooLarge{max: r.mx, ctp: r.ct}
 	}
 
 	return n, err

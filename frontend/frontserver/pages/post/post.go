@@ -3,9 +3,9 @@ package post
 import (
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
@@ -14,6 +14,7 @@ import (
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
 	"github.com/markbates/pkger"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -74,6 +75,8 @@ func (r renderCtx) ImageSizeAttr(p smolboard.Post) template.HTMLAttr {
 func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(pageRender))
+	mux.Post("/delete", muxer.M(deletePost))
+	mux.Post("/permission", muxer.M(changePermission))
 	mux.Post("/tag", muxer.M(tagPost))
 	return mux
 }
@@ -83,8 +86,6 @@ func pageRender(r *render.Request) (render.Render, error) {
 	if err != nil {
 		return render.Empty, err
 	}
-
-	log.Println("RequestURI:", r.RequestURI)
 
 	p, err := r.Session.Post(i)
 	if err != nil {
@@ -130,6 +131,39 @@ func pageRender(r *render.Request) (render.Render, error) {
 		ImageURL:    r.Session.PostDirectURL(p.Post),
 		Body:        tmpl.Render(renderCtx),
 	}, nil
+}
+
+func deletePost(r *render.Request) (render.Render, error) {
+	i, err := r.IDParam()
+	if err != nil {
+		return render.Empty, err
+	}
+
+	if err := r.Session.DeletePost(i); err != nil {
+		return render.Empty, err
+	}
+
+	r.Redirect("/posts", http.StatusSeeOther)
+	return render.Empty, nil
+}
+
+func changePermission(r *render.Request) (render.Render, error) {
+	i, err := r.IDParam()
+	if err != nil {
+		return render.Empty, err
+	}
+
+	p, err := strconv.Atoi(r.FormValue("p"))
+	if err != nil {
+		return render.Empty, errors.Wrap(err, "Failed to parse permission")
+	}
+
+	if err := r.Session.SetPostPermission(i, smolboard.Permission(p)); err != nil {
+		return render.Empty, err
+	}
+
+	r.Redirect(fmt.Sprintf("/posts/%d", i), http.StatusSeeOther)
+	return render.Empty, nil
 }
 
 func tagPost(r *render.Request) (render.Render, error) {

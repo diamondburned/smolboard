@@ -99,6 +99,19 @@ func (s *Session) PostThumbURL(post smolboard.Post) string {
 	return fmt.Sprintf("%s/%s/%s/thumb", s.Client.Endpoint(), "images", post.Filename())
 }
 
+func (s *Session) DeletePost(id int64) error {
+	return s.Client.Delete(fmt.Sprintf("/posts/%d", id), nil, nil)
+}
+
+func (s *Session) SetPostPermission(id int64, p smolboard.Permission) error {
+	return s.Client.Request(
+		"PATCH",
+		fmt.Sprintf("/posts/%d/permission", id),
+		nil,
+		url.Values{"p": {p.StringInt()}},
+	)
+}
+
 func (s *Session) TagPost(id int64, tag string) error {
 	if err := smolboard.TagIsValid(tag); err != nil {
 		return err
@@ -117,4 +130,18 @@ func (s *Session) UntagPost(id int64, tag string) error {
 	return s.Client.Post(fmt.Sprintf("/posts/%d/tags", id), nil, url.Values{
 		"t": {tag},
 	})
+}
+
+func (s *Session) ListTokens() (tl smolboard.TokenList, err error) {
+	return tl, s.Client.Get("/tokens", &tl, nil)
+}
+
+func (s *Session) CreateToken(uses int) (t smolboard.Token, err error) {
+	return t, s.Client.Post("/tokens", &t, url.Values{
+		"uses": {strconv.Itoa(uses)},
+	})
+}
+
+func (s *Session) DeleteToken(token string) error {
+	return s.Client.Delete("/tokens/"+token, nil, nil)
 }

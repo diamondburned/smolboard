@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (d *Transaction) ListTokens() ([]smolboard.Token, error) {
+func (d *Transaction) ListTokens() (*smolboard.TokenList, error) {
 	// Get the permission.
 	p, err := d.Permission()
 	if err != nil {
@@ -52,7 +52,10 @@ func (d *Transaction) ListTokens() ([]smolboard.Token, error) {
 		tokens = append(tokens, token)
 	}
 
-	return tokens, nil
+	return &smolboard.TokenList{
+		Tokens:  tokens,
+		MaxUses: d.config.MaxTokenUses,
+	}, nil
 }
 
 func (d *Transaction) DeleteToken(token string) error {
@@ -82,6 +85,10 @@ func (d *Transaction) DeleteToken(token string) error {
 }
 
 func (d *Transaction) CreateToken(uses int) (*smolboard.Token, error) {
+	if uses == 0 {
+		return nil, smolboard.ErrZeroNotAllowed
+	}
+
 	// Is the user going over the max use limit? If yes, disallow it.
 	if uses > d.config.MaxTokenUses {
 		return nil, smolboard.ErrOverUseLimit

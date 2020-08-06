@@ -1,6 +1,8 @@
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBKeU+7zCJoLcc=
+github.com/andybalholm/brotli v1.0.0 h1:7UCwP93aiSfvWpapti8g88vVVGp2qqtGyePsSuDafo4=
+github.com/andybalholm/brotli v1.0.0/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/bbrks/go-blurhash v0.0.0-20190629155354-b1b1c817265b h1:I0zw4Ni0LTCl25fE94tNcxtXQP9NTfNMzyeORAAUqpc=
 github.com/bbrks/go-blurhash v0.0.0-20190629155354-b1b1c817265b/go.mod h1:lkAsdyXp+EhARcUo85yS2G1o+Sh43I2ebF5togC4bAY=
@@ -15,6 +17,9 @@ github.com/diamondburned/duration v0.0.0-20200725205405-36cde0024396 h1:6V+XSBWf
 github.com/diamondburned/duration v0.0.0-20200725205405-36cde0024396/go.mod h1:N6RtUWkNDnMLtOoTc3uvwXPqsTXcPrhIeys5byHZZyY=
 github.com/diamondburned/go-blurhash v0.0.0-20200729185525-9fa9a8820d7f h1:yIuMasB8tvb9KMx6Na6uf3cVPl/wgBxV/WeedncN2lY=
 github.com/diamondburned/go-blurhash v0.0.0-20200729185525-9fa9a8820d7f/go.mod h1:lkAsdyXp+EhARcUo85yS2G1o+Sh43I2ebF5togC4bAY=
+github.com/didip/tollbooth v1.0.0 h1:nVIxVp0Jj75TVxTwUdbRzC0qO0K/LRZudetGemvTCxQ=
+github.com/didip/tollbooth v4.0.2+incompatible h1:fVSa33JzSz0hoh2NxpwZtksAzAgd7zjmGO20HCZtF4M=
+github.com/didip/tollbooth v4.0.2+incompatible/go.mod h1:A9b0665CE6l1KmzpDws2++elm/CsuWBMa5Jv4WY0PEY=
 github.com/didip/tollbooth/v6 v6.0.1 h1:QvLvRpB1G2bzKvkRze0muMUBlGN9H1z7tJ4DH4ypWOU=
 github.com/didip/tollbooth/v6 v6.0.1/go.mod h1:j2pKs+JQ5PvU/K4jFnrnwntrmfUbYLJE5oSdxR37FD0=
 github.com/disintegration/imaging v1.6.2 h1:w1LecBlG2Lnp8B3jk5zSuNqd7b4DXhcjwek1ei82L+c=

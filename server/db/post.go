@@ -142,9 +142,7 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 		}
 
 		if err := d.QueryRow(cstring, inargs...).Scan(&results.Total, &results.Sizes); err != nil {
-			if !errors.Is(err, sql.ErrNoRows) {
-				return smolboard.NoResults, errors.Wrap(err, "Failed to scan total posts found")
-			}
+			return smolboard.NoResults, errors.Wrap(err, "Failed to scan total posts found")
 		}
 	}
 

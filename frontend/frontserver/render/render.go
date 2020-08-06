@@ -3,13 +3,16 @@ package render
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 
+	"github.com/andybalholm/brotli"
 	"github.com/diamondburned/smolboard/client"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/markbates/pkger"
 )
 
@@ -139,21 +142,50 @@ func pushAssets(next http.Handler) http.Handler {
 
 type Mux struct {
 	*chi.Mux
-	host string
-	cfg  Config
-	errR ErrorRenderer
+	client func(r *http.Request) (*client.Client, error)
+	cfg    Config
+	errR   ErrorRenderer
 }
 
-func NewMux(serverHost string, cfg Config) *Mux {
+func newMux() *chi.Mux {
+	c := middleware.NewCompressor(5)
+	c.SetEncoder("br", func(w io.Writer, level int) io.Writer {
+		return brotli.NewWriterLevel(w, level)
+	})
+
 	r := chi.NewMux()
 	r.Use(ThemeM)
+	r.Use(c.Handler)
 	r.Post("/theme", handleSetTheme)
 	r.Route("/static", func(r chi.Router) {
 		r.Get("/components.css", componentsCSSHandler)
 		r.Mount("/", http.FileServer(pkger.Dir("/frontend/frontserver/static/")))
 	})
+	return r
+}
 
-	return &Mux{r, serverHost, cfg, nil}
+// NewMux creates a new frontend muxer with the given backendSocket as the Unix
+// socket path to call the backend.
+func NewMux(backendSocket string, cfg Config) *Mux {
+	return &Mux{
+		Mux: newMux(),
+		cfg: cfg,
+		client: func(r *http.Request) (*client.Client, error) {
+			return client.NewSocketClientFromRequest(backendSocket, r)
+		},
+	}
+}
+
+// NewHTTPMux creates a new frontend muxer with the given backendHTTP endpoint.
+// This endpoint will be used to make HTTP requests to the server.
+func NewHTTPMux(backendHTTP string, cfg Config) *Mux {
+	return &Mux{
+		Mux: newMux(),
+		cfg: cfg,
+		client: func(r *http.Request) (*client.Client, error) {
+			return client.NewHTTPClientFromRequest(backendHTTP, r)
+		},
+	}
 }
 
 func (m *Mux) SetErrorRenderer(r ErrorRenderer) {
@@ -161,7 +193,7 @@ func (m *Mux) SetErrorRenderer(r ErrorRenderer) {
 }
 
 func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) *Request {
-	c, err := client.NewClientFromRequest(m.host, r)
+	c, err := m.client(r)
 	if err != nil {
 		// Host is a constant, so we can panic here.
 		log.Panicln("Error making client:", err)

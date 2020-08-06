@@ -57,7 +57,6 @@ func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(pageRender))
 	mux.Post("/", muxer.M(handlePOST))
-	mux.Delete("/", muxer.M(handleDELETE))
 	return mux
 }
 
@@ -108,7 +107,13 @@ func handlePOST(r *render.Request) (render.Render, error) {
 	return render.Empty, nil
 }
 
-func handleDELETE(r *render.Request) (render.Render, error) {
+func MountSignOut(muxer render.Muxer) http.Handler {
+	mux := chi.NewMux()
+	mux.Post("/", muxer.M(signout))
+	return mux
+}
+
+func signout(r *render.Request) (render.Render, error) {
 	if err := r.Session.Signout(); err != nil {
 		return render.Empty, err
 	}

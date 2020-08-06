@@ -195,7 +195,7 @@ func (d *Database) enableFK() error {
 // createOwner is an internal function.
 func (d *Database) createOwner(password string) error {
 	return d.AcquireGuest(context.Background(), func(tx *Transaction) error {
-		return tx.createUser(d.Config.Owner, password, smolboard.PermissionOwner)
+		return tx.createUser(d.Config.Owner, password, smolboard.PermissionUser)
 	})
 }
 

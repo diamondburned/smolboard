@@ -36,11 +36,11 @@ func TestToken(t *testing.T) {
 			t.Fatal("Failed to get tokens:", err)
 		}
 
-		if len(tokens) != 1 {
+		if len(tokens.Tokens) != 1 {
 			t.Fatal("Invalid tokens returned:", tokens)
 		}
 
-		if eq := deep.Equal(tokens[0], *k); eq != nil {
+		if eq := deep.Equal(tokens.Tokens[0], *k); eq != nil {
 			t.Fatal("Returned unlimited-use token inequality:", eq)
 		}
 	})
@@ -102,13 +102,13 @@ func TestTokenListAdmin(t *testing.T) {
 		t.Fatal("Failed to list tokens:", err)
 	}
 
-	if len(list) > 0 {
+	if len(list.Tokens) > 0 {
 		t.Fatal("Unexpected tokens before creating any for admin:", list)
 	}
 
 	// Create 5 admin tokens.
 	t.Run("AdminCreate", func(t *testing.T) {
-		for i := 0; i < 5; i++ {
+		for i := 1; i < 5; i++ {
 			k, err := tx.CreateToken(i)
 			if err != nil {
 				t.Fatal("Failed to create n-use token:", err)
@@ -123,7 +123,7 @@ func TestTokenListAdmin(t *testing.T) {
 	}
 
 	// Admin tokens start after the 10 owner tokens, so we slice that away.
-	if eq := deep.Equal(list, tokens[10:]); eq != nil {
+	if eq := deep.Equal(list.Tokens, tokens[10:]); eq != nil {
 		t.Fatal("Unexpected token list returned:", eq)
 	}
 }

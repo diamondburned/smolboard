@@ -3,6 +3,7 @@ package gallery
 import (
 	"fmt"
 	"html/template"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ func init() {
 }
 
 const MaxThumbSize = 300
+const PageSize = 25
 
 var tmpl = render.BuildPage("home", render.Page{
 	Template: pkger.Include("/frontend/frontserver/pages/gallery/gallery.html"),
@@ -41,6 +43,13 @@ var tmpl = render.BuildPage("home", render.Page{
 			}
 			return strconv.Itoa(i)
 		},
+
+		"numPages": func(max int) int {
+			return int(math.Ceil(float64(max) / PageSize))
+		},
+
+		"dec": func(i int) int { return i - 1 },
+		"inc": func(i int) int { return i + 1 },
 	},
 })
 
@@ -57,6 +66,9 @@ type renderCtx struct {
 
 	// Tokens is non-nil if IsAdmin returns true.
 	smolboard.TokenList
+
+	Query string // ?q=X
+	Page  int    // ?p=X
 }
 
 func (r renderCtx) AllowedUploadPerms() []smolboard.Permission {
@@ -129,7 +141,18 @@ func Mount(muxer render.Muxer) http.Handler {
 }
 
 func pageRender(r *render.Request) (render.Render, error) {
-	p, err := r.Session.PostSearch(r.FormValue("q"), 25, 0)
+	var page = 1
+	if str := r.FormValue("p"); str != "" {
+		p, err := strconv.Atoi(str)
+		if err != nil {
+			return render.Empty, errors.Wrap(err, "Failed to parse page")
+		}
+		page = p
+	}
+
+	var query = r.FormValue("q")
+
+	p, err := r.Session.PostSearch(query, PageSize, page-1)
 	if err != nil {
 		return render.Empty, err
 	}
@@ -142,6 +165,9 @@ func pageRender(r *render.Request) (render.Render, error) {
 	var renderCtx = renderCtx{
 		CommonCtx:     r.CommonCtx,
 		SearchResults: p,
+
+		Page:  page,
+		Query: query,
 	}
 
 	if renderCtx.IsAdmin() {

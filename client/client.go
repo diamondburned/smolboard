@@ -1,9 +1,11 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -53,8 +55,10 @@ func (err ErrUnexpectedStatusCode) Error() string {
 // own client, as each client has its own cookiejar.
 type Client struct {
 	http.Client
-	host  *url.URL
-	agent string
+	ctx    context.Context
+	host   *url.URL
+	agent  string
+	remote string
 }
 
 // NewClient makes a new client. Host is optional. This client is HTTPS by
@@ -70,24 +74,96 @@ func NewClient(host string) (*Client, error) {
 			Timeout: 10 * time.Second,
 			Jar:     NewJar(),
 		},
+		ctx:  context.Background(),
 		host: u,
 	}
 
 	return client, nil
 }
 
-// NewClientFromRequest creates a new stateful client with cookies and
+// dialer to be used w/ unix
+var dialer = net.Dialer{
+	Timeout: 30 * time.Second,
+}
+
+// NewSocketClient makes a new client that dials to the given socket. The given
+// host is used for cookies.
+func NewSocketClient(host *url.URL, socket string) (*Client, error) {
+	var client = &Client{
+		Client: http.Client{
+			Timeout: 10 * time.Second,
+			Jar:     NewJar(),
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+					return dialer.DialContext(ctx, "unix", socket)
+				},
+			},
+		},
+		ctx:  context.Background(),
+		host: host,
+	}
+
+	return client, nil
+}
+
+// NewSocketClientFromRequest creates a new stateful client with cookies and
 // useragents from the request.
-func NewClientFromRequest(host string, r *http.Request) (*Client, error) {
-	c, err := NewClient(host)
+func NewHTTPClientFromRequest(backendHTTP string, r *http.Request) (*Client, error) {
+	c, err := NewClient(backendHTTP)
 	if err != nil {
 		return nil, err
 	}
 
+	c.ctx = r.Context()
 	c.SetCookies(r.Cookies())
 	c.SetUserAgent(r.UserAgent())
+	c.SetRemoteAddr(r.RemoteAddr)
+
+	if f := r.Header.Get("X-Forwarded-For"); f != "" {
+		c.SetRemoteAddr(f)
+	}
 
 	return c, nil
+}
+
+// NewSocketClientFromRequest creates a new stateful client with cookies and
+// useragents from the request.
+func NewSocketClientFromRequest(socket string, r *http.Request) (*Client, error) {
+	// Host doesn't matter, but we can pretend the domain is the host.
+	var u = &url.URL{
+		Scheme: "http",
+		Host:   r.Host,
+	}
+
+	c, err := NewSocketClient(u, socket)
+	if err != nil {
+		return nil, err
+	}
+
+	c.ctx = r.Context()
+	c.SetCookies(r.Cookies())
+	c.SetUserAgent(r.UserAgent())
+	c.SetRemoteAddr(r.RemoteAddr)
+
+	if f := r.Header.Get("X-Forwarded-For"); f != "" {
+		c.SetRemoteAddr(f)
+	}
+
+	return c, nil
+}
+
+// WithContext shallow-copies the client and returns another one with the
+// implicit context set.
+func (c *Client) WithContext(ctx context.Context) *Client {
+	cpy := new(Client)
+	*cpy = *c
+	cpy.ctx = ctx
+	return cpy
+}
+
+// SetRemoteAddr sets the address that will be used for X-Forwarded-For.
+func (c *Client) SetRemoteAddr(addr string) {
+	c.remote = addr
 }
 
 func (c *Client) SetUserAgent(userAgent string) {
@@ -125,6 +201,8 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	if c.agent != "" {
 		req.Header.Set("User-Agent", c.agent)
 	}
+
+	req.Header.Set("X-Forwarded-For", c.remote)
 
 	r, err := c.Client.Do(req)
 	if err != nil {
@@ -189,13 +267,16 @@ func (c *Client) Request(method, path string, resp interface{}, v url.Values) (e
 
 	switch method {
 	case http.MethodPatch, http.MethodPost, http.MethodPut:
-		r, err = http.NewRequest(method, c.Endpoint()+path, strings.NewReader(v.Encode()))
+		r, err = http.NewRequestWithContext(
+			c.ctx,
+			method, c.Endpoint()+path, strings.NewReader(v.Encode()),
+		)
 		if err == nil {
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
 	default:
 		var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
-		r, err = http.NewRequest(method, url, nil)
+		r, err = http.NewRequestWithContext(c.ctx, method, url, nil)
 	}
 
 	if err != nil {

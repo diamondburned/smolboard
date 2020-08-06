@@ -179,7 +179,7 @@ func tagPost(r *render.Request) (render.Render, error) {
 	// trim the /tags suffix
 	var postURL = path.Dir(r.URL.Path)
 
-	http.Redirect(r.Writer, r.Request, postURL, http.StatusSeeOther)
+	r.Redirect(postURL, http.StatusSeeOther)
 	return render.Empty, nil
 }
 

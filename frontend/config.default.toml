@@ -1,0 +1,4 @@
+listenAddress  = "localhost:42070"
+backendAddress = "http://localhost:42069"
+
+siteName = "smolboard demo"

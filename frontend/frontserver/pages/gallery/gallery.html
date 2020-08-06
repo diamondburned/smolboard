@@ -15,6 +15,46 @@
 				</div>
 			</div>
 
+			{{ if (gt .Total 25) }}
+			<form class="paginator" action="/posts">
+				<legend>Gallery Page</legend>
+
+				<input type="hidden" name="q" value={{ .Query }}>
+
+				{{ $lastPage := (numPages .Total) }}
+				{{ $prevPage := (dec .Page) }}
+				{{ $nextPage := (inc .Page) }}
+
+				<div class="page-buttons">
+					<button type="submit" class="last-page small" name="p"
+						{{ if (gt $prevPage 0) }}
+						value="{{ $prevPage }}"
+						{{ else }}
+						disabled
+						{{ end }}
+					>
+						❮ Prev
+					</button>
+
+					<input type="submit" style="display: none">
+					<input type="number" class="page-input small"
+						   min="1" max="{{ $lastPage }}" value="{{ .Page }}"
+					>
+					<span class="max-page"> / {{ $lastPage }}</span>
+
+					<button type="submit" class="next-page small" name="p"
+						{{ if (le $nextPage $lastPage) }}
+						value="{{ $nextPage }}"
+						{{ else }}
+						disabled
+						{{ end }}
+					>
+						Next ❯
+					</button>
+				</div>
+			</form>
+			{{ end }}
+
 			{{ with .User }}
 			<div class="search-user-info">
 				<legend>User Information</legend>
@@ -75,7 +115,7 @@
 			{{ end }}
 
 			{{ if .Username }}
-			<form class="logout" action="/signout" method="delete">
+			<form class="logout" action="/signout" method="post">
 				<button type="submit" class="small">Sign out</button>
 			</form>
 			{{ end }}
@@ -83,10 +123,10 @@
 
 		<main class="posts row">
 			{{ range .Posts }}
-			<figure class="post card">
+			<figure class="gallery-post card">
 				<a href="/posts/{{.ID}}">
 					{{ if (isImage .ContentType) }}
-					<img alt="Image" {{ $.SizeAttr . }}
+					<img loading="lazy" {{ $.SizeAttr . }}
 						 src="{{ $.Session.PostThumbURL . }}"
 						 style="background-image: url('{{ $.InlineImage . }}')">
 	

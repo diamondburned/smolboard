@@ -1,17 +1,20 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver"
 	"github.com/diamondburned/smolboard/server"
+	"github.com/diamondburned/smolboard/server/http/upload"
 	"github.com/go-chi/chi"
 	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"
@@ -21,6 +24,7 @@ import (
 
 var (
 	configGlob = "./config*.toml"
+	noFrontend = false
 )
 
 func stderrlnf(f string, v ...interface{}) {
@@ -28,8 +32,8 @@ func stderrlnf(f string, v ...interface{}) {
 }
 
 type Config struct {
-	Address string `toml:"address"`
-	address *url.URL
+	SocketPath string `toml:"socketPath"`
+	SocketPerm string `toml:"socketPerm"`
 
 	frontserver.FrontConfig
 	server.Config
@@ -46,6 +50,11 @@ func init() {
 	pflag.StringVarP(
 		&configGlob, "config", "c", configGlob,
 		"Path to config file with glob support for fallback",
+	)
+
+	pflag.BoolVarP(
+		&noFrontend, "no-frontend", "n", noFrontend,
+		"Disable the default frontend at root",
 	)
 
 	pflag.Usage = func() {
@@ -79,7 +88,18 @@ func main() {
 			log.Fatalln("Failed to read globbed config file:", err)
 		}
 
-		if err := toml.Unmarshal(f, &cfg); err != nil {
+		t, err := toml.LoadBytes(f)
+		if err != nil {
+			log.Fatalln("Failed to load TOML:")
+		}
+
+		// Workaround: Unmarshal really wants a non-nil MaxSize block, else it
+		// will panic. We have to manually insert this if it's not there.
+		if !t.Has("MaxSize") {
+			t.SetPath([]string{"MaxSize"}, upload.MaxSize{})
+		}
+
+		if err := t.Unmarshal(&cfg); err != nil {
 			log.Fatalln("Failed to unmarshal from TOML:", err)
 		}
 	}
@@ -106,22 +126,43 @@ func main() {
 			log.Fatalln("Failed to create instance:", err)
 		}
 
-		if cfg.Address == "" {
-			log.Fatalln("Missing field `address'")
-		}
-
-		f, err := frontserver.New("http://"+cfg.Address, cfg.FrontConfig)
-		if err != nil {
-			log.Fatalln("Failed to create frontend:", err)
-		}
-
 		mux := chi.NewMux()
 		mux.Mount("/api/v1", a)
-		mux.Mount("/", f)
 
-		log.Println("Starting listener at", cfg.Address)
+		if !noFrontend {
+			f, err := frontserver.New(cfg.SocketPath, cfg.FrontConfig)
+			if err != nil {
+				log.Fatalln("Failed to create frontend:", err)
+			}
+			mux.Mount("/", f)
+		}
 
-		if err := http.ListenAndServe(cfg.Address, mux); err != nil {
+		// Ensure that the socket is cleaned up because we're not gracefully
+		// handling closes.
+		if err := os.Remove(cfg.SocketPath); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				log.Fatalln("Failed to clean up old socket:", err)
+			}
+		}
+
+		l, err := net.Listen("unix", cfg.SocketPath)
+		if err != nil {
+			log.Fatalln("Failed to listen to Unix socket:", err)
+		}
+
+		if cfg.SocketPerm != "" {
+			o, err := strconv.ParseUint(cfg.SocketPerm, 8, 32)
+			if err != nil {
+				log.Fatalln("Failed to parse socket perm in octet:", err)
+			}
+			if err := os.Chmod(cfg.SocketPath, os.FileMode(o)); err != nil {
+				log.Fatalln("Failed to chmod socket:", err)
+			}
+		}
+
+		log.Println("Starting listener at socket", l.Addr())
+
+		if err := http.Serve(l, mux); err != nil {
 			log.Fatalln("Failed to start:", err)
 		}
 	}

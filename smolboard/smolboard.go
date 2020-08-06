@@ -310,9 +310,9 @@ var AllPosts = Query{}
 type SearchResults struct {
 	// Posts contains the paginated list of posts.
 	Posts []Post `json:"posts"`
-	// Total is the total number of posts found.
+	// Total is the total number of posts found. It is zero if Posts is empty.
 	Total int `json:"total"`
-	// Sizes is the total size of all posts found.
+	// Sizes is the total size of all posts found. It is zero if Posts is empty.
 	Sizes int64 `json:"sizes"`
 	// User is the user stated in the search query. It is nil if there's no user
 	// stated.

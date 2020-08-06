@@ -1,3 +1,35 @@
+.paginator > .page-buttons {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+}
+
+.paginator > .page-buttons > * {
+    white-space: nowrap;
+    padding: calc(0.5 * var(--universal-padding)) calc(1.5 * var(--universal-padding));
+}
+
+.paginator button.next-page,
+.paginator button.last-page {
+	flex: 1;
+	color: var(--fore-color);
+}
+
+.paginator button:disabled {
+	color: var(--secondary-fore-color);
+}
+
+.paginator > .page-buttons > .page-input {
+	color: var(--secondary-fore-color);
+    border: none;
+    background: inherit;
+
+	padding-right: 0;
+
+    width: 20%;
+    text-align: right;
+}
+
 .uploader {
 	display: flex;
 	flex-direction: column;
@@ -28,27 +60,28 @@
 }
 
 main.posts {
-	margin-top:  var(--universal-margin);
+	margin-top: var(--universal-margin);
+	align-content: baseline;
 }
 
-main.posts .post.card {
+main.posts .gallery-post.card {
 	width: auto;
 	margin-left: 0;
 	margin-top:  0;
 	transition: linear 75ms;
 }
 
-main.posts .post.card:hover {
+main.posts .gallery-post.card:hover {
 	-webkit-filter: brightness(90%) contrast(110%);
 }
 
-main.posts .post a {
+main.posts .gallery-post a {
 	line-height: 0;
 	display: flex;
 	justify-content: center;
 }
 
-main.posts .post a > * {
+main.posts .gallery-post a > * {
 	object-fit: cover;
 	height: 200px;
 	width: auto;
@@ -58,7 +91,7 @@ main.posts .post a > * {
 }
 
 @media (max-width: 600px) {
-	main.posts .post a > * {
+	main.posts .gallery-post a > * {
 		height: 300px;
 		max-width: 400px;
 	}

@@ -74,6 +74,12 @@ func (d *Transaction) User(username string) (*smolboard.UserPart, error) {
 		return nil, errors.Wrap(err, "Failed to scan row to user")
 	}
 
+	// Override the permission without actually overriding the database if
+	// needed.
+	if d.config.Owner == username {
+		u.Permission = smolboard.PermissionOwner
+	}
+
 	return &u, nil
 }
 

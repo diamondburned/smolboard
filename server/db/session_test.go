@@ -47,9 +47,10 @@ func TestSession(t *testing.T) {
 
 	n := tx.Session
 
-	if s.Deadline >= n.Deadline {
-		t.Fatal("Fetched session's deadline is not renewed.")
-	}
+	// Doesn't work anymore since we have a 1-hour gap between renewals.
+	// if s.Deadline >= n.Deadline {
+	// 	t.Fatal("Fetched session's deadline is not renewed.")
+	// }
 
 	if s.AuthToken != n.AuthToken {
 		t.Fatal("Fetched session has mismatched token.")

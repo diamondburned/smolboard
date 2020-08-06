@@ -9,8 +9,9 @@ databasePath  = "/tmp/smolboard.db"
 maxTokenUses  = 100  # max use for the invitation token
 tokenLifespan = "7d" # lifespan for the session token
 
-address     = "localhost:42069"
-maxBodySize = "1GB" # absolute max size including file name and form
+socketPath  = "/tmp/smolboard.sock"
+socketPerm  = "0777" # octet
+maxBodySize = "1GB"  # absolute max size including file name and form
 
 fileDirectory = "/tmp/smolboard-store/"
 maxFileSize   = "500MB" # absolute max file size

@@ -10,6 +10,10 @@ import (
 // Permission scans for the permission of that user. It returns -1 if there is
 // an error.
 func (d *Transaction) permission(user string) (perm smolboard.Permission, err error) {
+	if user == d.config.Owner {
+		return smolboard.PermissionOwner, nil
+	}
+
 	err = d.
 		QueryRow("SELECT permission FROM users WHERE username = ?", user).
 		Scan(&perm)

@@ -16,6 +16,8 @@
 				<input type="submit" class="tag"
 					   formaction="/posts"
 					   name="q" value="{{ .TagName }}" />
+				{{ else }}
+				<p class="no-tag-msg">No tags.</p>
 				{{ end }}
 
 				{{ if $.CanChangePost }}
@@ -52,6 +54,11 @@
 
 					<span>Size</span>
 					<span id="size">{{ humanizeSize .Size }}</span>
+
+					{{ if (and .Attributes.Width .Attributes.Height) }}
+					<span>Dimensions</span>
+					<span id="dimensions">{{.Attributes.Width}}x{{.Attributes.Height}}</span>
+					{{ end }}
 
 					<span>Poster</span>
 					<span id="poster">{{ .Poster }}</span>
@@ -102,9 +109,9 @@
 			{{ with .Post }}
 
 			{{ if (isImage .ContentType) }}
-			<img alt="Image" {{ $.ImageSizeAttr . }}
+			<img {{ $.ImageSizeAttr . }}
 				 src="{{ $.Session.PostDirectURL . }}"
-				 style="background-image: url('{{ $.Session.PostThumbURL . }}')">
+				 style="background-image: url('{{ $.Session.PostThumbURL . }}')" />
 
 			{{ else if (isVideo .ContentType) }}
 			<video preload="all" controls src="{{ $.Session.PostDirectURL . }}#t=0.1" />

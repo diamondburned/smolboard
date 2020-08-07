@@ -84,9 +84,8 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 		header.WriteString("JOIN posttags ON posttags.postid = posts.id ")
 		// Query using the above joins.
 		footer.WriteString("AND posttags.tagname IN (?) ")
-		// Although post IDs are unique, since we're joining two tables, we'd
-		// want to group all the results.
-		footer.WriteString("GROUP BY posts.id ")
+		// There used to be a GROUP BY here. However, the GROUP BY messes up the
+		// COUNT and SUM functions.
 		footerArgs = append(footerArgs, pq.Tags)
 	}
 
@@ -132,7 +131,7 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 		countq.WriteString(`
 			SELECT
 				COUNT(DISTINCT posts.id),
-				SUM(posts.size) * COUNT(DISTINCT posts.id) / COUNT(*) `)
+				SUM(posts.size) * COUNT(DISTINCT posts.id) / COUNT(posts.id) `)
 		countq.WriteString(header.String())
 		countq.WriteString(footer.String())
 

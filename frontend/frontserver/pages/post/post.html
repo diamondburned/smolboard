@@ -14,8 +14,10 @@
 						   formaction="/posts/{{.ID}}/tag" formmethod="post"
 					/>
 	
-					{{ range .Tags }}
-					<div class="tag-row">
+					{{ with .Tags }}
+					<div class="tag-grid">
+						{{ range . }}
+						<p class="tag-count">{{ .Count }}</p>
 						<input type="submit" class="tag"
 							   formaction="/posts"
 							   name="q" value="{{ .TagName }}"
@@ -26,6 +28,7 @@
 						>
 							×
 						</button>
+						{{ end }}
 					</div>
 					{{ else }}
 					<p class="no-tag-msg">No tags.</p>

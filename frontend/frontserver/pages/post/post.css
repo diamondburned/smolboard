@@ -35,9 +35,29 @@ body.post-page {
 	}
 }
 
-.post aside form .tag-row {
-    display: flex;
-    justify-content: space-between;
+.post aside .tag-grid {
+	margin: 0 calc(0.5 * var(--universal-margin));
+
+	display: grid;
+	grid-template-columns: min-content 1fr min-content;
+
+	align-items: baseline;
+}
+
+.post aside .tag-grid .tag-count {
+	color: var(--secondary-fore-color);
+}
+
+.post aside .tag-grid .tag,
+.post aside .tag-grid .tag-count {
+	margin: 0;
+}
+
+.post aside .tag-grid input.tag {
+	padding: 0;
+	text-overflow: ellipsis;
+    white-space:   nowrap;
+    overflow:      hidden;
 }
 
 .post aside form .tag {

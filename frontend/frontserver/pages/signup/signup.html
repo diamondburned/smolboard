@@ -1,20 +1,23 @@
 <body>
-	<div class="signin">
+	<div class="signin signup">
 	
-		<form class="signin" action="/signin" method="post">
-			{{ with .Error }}
-			<p class="error" alt={{ . }}>{{ minifyError . }}</p>
-			{{ end }}
+		<form class="signin signup" action="/signup" method="post">
+			{{ template "errbox" .Error }}
 	
 			<div class="inputs">
 				<label for="username">Username</label>
-				<input type="text" id="username" name="username">
+				<input type="text" id="username" name="username" value="{{ .Username }}">
 		
 				<label for="password">Password</label>
 				<input type="password" id="password" name="password">
+
+				<label for="token">Invite Token</label>
+				<input type="password" id="token" name="token">
 			</div>
 	
-			<button type="submit" class="signin">Sign in</button>
+			<div class="buttons">
+				<button type="submit" class="signin signup primary">Sign up</button>
+			</div>
 		</form>
 	</div>
 	

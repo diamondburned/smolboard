@@ -87,7 +87,14 @@
 						{{ end }}
 					</select>
 	
-					<input type="submit" value="Upload" class="small">
+					<button class="upload small" type="submit">
+						<span>Upload</span>
+
+						{{/* Hidden overlay to prevent clicks */}}
+						<div class="uploading-overlay">
+							<div role="progressbar" class="spinner primary"></div>
+						</div>
+					</button>
 				</form>
 				{{ end }}
 	

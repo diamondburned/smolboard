@@ -11,15 +11,6 @@ form.signin {
 	padding-right: calc(2 * var(--universal-padding));
 }
 
-form.signin p.error {
-	color: var(--input-invalid-color);
-}
-
-form.signin p.error::before {
-	content: "Error: ";
-	font-weight: bold;
-}
-
 form.signin .inputs {
 	display: grid;
 	grid-template-columns: auto 1fr;
@@ -37,8 +28,16 @@ form.signin .inputs input {
 	margin: 0;
 }
 
-form.signin button.signin {
-	align-self: flex-end;
-	margin-right:  0;
-	margin-bottom: 0;
+form.signin div.buttons {
+	display: flex;
+	flex-direction:  row;
+	justify-content: space-between;
+
+	margin-top:  calc(1 * var(--universal-margin));
+    margin-left: var(--universal-margin);
+}
+
+form.signin .signin,
+form.signin .signup {
+	margin: 0;
 }

@@ -2,10 +2,9 @@ package signin
 
 import (
 	"net/http"
-	"strings"
-	"unicode"
-	"unicode/utf8"
 
+	"github.com/diamondburned/smolboard/client"
+	"github.com/diamondburned/smolboard/frontend/frontserver/components/errbox"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/go-chi/chi"
@@ -19,37 +18,18 @@ func init() {
 	)
 }
 
-var tmpl = render.BuildPage("home", render.Page{
+var tmpl = render.BuildPage("signin", render.Page{
 	Template: pkger.Include("/frontend/frontserver/pages/signin/signin.html"),
 	Components: map[string]render.Component{
 		"footer": footer.Component,
-	},
-	Functions: map[string]interface{}{
-		"minifyError": minifyError,
+		"errbox": errbox.Component,
 	},
 })
 
 type renderCtx struct {
 	render.CommonCtx
-	Error error
-}
-
-func minifyError(err error) string {
-	var errmsg = err.Error()
-	var parts = strings.Split(errmsg, ": ")
-	if len(parts) == 0 {
-		return ""
-	}
-
-	var part = parts[len(parts)-1]
-	// Capitalize the first letter.
-	f, sz := utf8.DecodeRune([]byte(part))
-	if sz > 0 {
-		f = unicode.ToUpper(f)
-		part = string(f) + part[sz:]
-	}
-
-	return part + "."
+	Error    error
+	Username string
 }
 
 func Mount(muxer render.Muxer) http.Handler {
@@ -60,17 +40,18 @@ func Mount(muxer render.Muxer) http.Handler {
 }
 
 func pageRender(r *render.Request) (render.Render, error) {
-	return pageRenderErr(r, nil)
+	return pageRenderErr(r, "", nil)
 }
 
-func pageRenderErr(r *render.Request, err error) (render.Render, error) {
+func pageRenderErr(r *render.Request, username string, err error) (render.Render, error) {
 	var renderCtx = renderCtx{
 		CommonCtx: r.CommonCtx,
 		Error:     err,
+		Username:  username,
 	}
 
 	return render.Render{
-		Title: "Sign in",
+		Title: "Sign In",
 		Body:  tmpl.Render(renderCtx),
 	}, nil
 }
@@ -83,7 +64,8 @@ func handlePOST(r *render.Request) (render.Render, error) {
 
 	_, err := r.Session.Signin(username, password)
 	if err != nil {
-		return render.Empty, err
+		r.Writer.WriteHeader(client.ErrGetStatusCode(err, 500))
+		return pageRenderErr(r, username, err)
 	}
 
 	// Confirm that we do indeed have a token cookie.
@@ -99,7 +81,7 @@ func handlePOST(r *render.Request) (render.Render, error) {
 		Domain: tcookie.Domain,
 	})
 
-	r.Redirect(r.Referer(), http.StatusFound)
+	r.Redirect(r.Referer(), http.StatusSeeOther)
 	return render.Empty, nil
 }
 
@@ -114,6 +96,6 @@ func signout(r *render.Request) (render.Render, error) {
 		return render.Empty, err
 	}
 
-	r.Redirect(r.Referer(), http.StatusFound)
+	r.Redirect(r.Referer(), http.StatusSeeOther)
 	return render.Empty, nil
 }

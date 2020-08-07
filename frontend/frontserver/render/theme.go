@@ -18,7 +18,7 @@ const (
 	themeLen
 )
 
-const DefaultTheme = NordTheme
+const DefaultTheme = LightTheme
 
 func ParseTheme(name string) Theme {
 	switch name {

@@ -85,10 +85,6 @@ type SignupForm struct {
 }
 
 func Signup(r tx.Request) (interface{}, error) {
-	if r.Tx.Session.IsZero() {
-		return nil, nil
-	}
-
 	var auth SignupForm
 
 	if err := form.Unmarshal(r, &auth); err != nil {

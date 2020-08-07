@@ -8,6 +8,7 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/pages/home"
 	"github.com/diamondburned/smolboard/frontend/frontserver/pages/post"
 	"github.com/diamondburned/smolboard/frontend/frontserver/pages/signin"
+	"github.com/diamondburned/smolboard/frontend/frontserver/pages/signup"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 )
 
@@ -54,5 +55,6 @@ func bind(r *render.Mux) {
 	r.Mount("/posts/{id}", post.Mount)
 	r.Mount("/tokens", gallery.MountTokenRoutes)
 	r.Mount("/signin", signin.Mount)
+	r.Mount("/signup", signup.Mount)
 	r.Mount("/signout", signin.MountSignOut)
 }

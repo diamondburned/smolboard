@@ -79,8 +79,8 @@ func (r renderCtx) AllowedUploadPerms() []smolboard.Permission {
 
 	var allPerm = smolboard.AllPermissions()
 
-	// Iterate over all permissions except guest.
-	for i, perm := range allPerm[1:] {
+	// Iterate over all permissions.
+	for i, perm := range allPerm {
 		if perm > r.User.Permission {
 			// Slice 0:i to allow guests.
 			return allPerm[:i]

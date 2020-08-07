@@ -1,0 +1,9 @@
+p.error {
+	color: var(--input-invalid-color);
+	margin-top: 0;
+}
+
+p.error::before {
+	content: "Error: ";
+	font-weight: bold;
+}

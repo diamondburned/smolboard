@@ -43,6 +43,7 @@ var globalFns = template.FuncMap{
 type Component struct {
 	Template   string
 	Components map[string]Component
+	Functions  template.FuncMap
 }
 
 type Page struct {
@@ -52,11 +53,6 @@ type Page struct {
 }
 
 func BuildPage(n string, p Page) *Template {
-	tmpl := template.New(n)
-	tmpl = tmpl.Funcs(globalFns)
-	tmpl = tmpl.Funcs(p.Functions)
-	tmpl = template.Must(tmpl.Parse(string(read(p.Template))))
-
 	// Combine all component duplicates.
 	for _, component := range p.Components {
 		if component.Components != nil {
@@ -65,6 +61,28 @@ func BuildPage(n string, p Page) *Template {
 			}
 		}
 	}
+
+	// Combine all function duplicates.
+	for _, component := range p.Components {
+		if component.Functions != nil {
+			// Ensure that we have a parent functions map.
+			if p.Functions == nil {
+				p.Functions = template.FuncMap{}
+			}
+
+			for n, fn := range component.Functions {
+				// Only set into the map if we don't already have the function.
+				if _, ok := p.Functions[n]; !ok {
+					p.Functions[n] = fn
+				}
+			}
+		}
+	}
+
+	tmpl := template.New(n)
+	tmpl = tmpl.Funcs(globalFns)
+	tmpl = tmpl.Funcs(p.Functions)
+	tmpl = template.Must(tmpl.Parse(string(read(p.Template))))
 
 	// Parse all components' HTMLs.
 	for n, component := range p.Components {

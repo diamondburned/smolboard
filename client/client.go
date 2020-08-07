@@ -71,8 +71,7 @@ func NewClient(host string) (*Client, error) {
 
 	var client = &Client{
 		Client: http.Client{
-			Timeout: 10 * time.Second,
-			Jar:     NewJar(),
+			Jar: NewJar(),
 		},
 		ctx:  context.Background(),
 		host: u,
@@ -91,8 +90,7 @@ var dialer = net.Dialer{
 func NewSocketClient(host *url.URL, socket string) (*Client, error) {
 	var client = &Client{
 		Client: http.Client{
-			Timeout: 10 * time.Second,
-			Jar:     NewJar(),
+			Jar: NewJar(),
 			Transport: &http.Transport{
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 					return dialer.DialContext(ctx, "unix", socket)

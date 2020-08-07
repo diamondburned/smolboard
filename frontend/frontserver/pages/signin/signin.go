@@ -1,7 +1,6 @@
 package signin
 
 import (
-	"log"
 	"net/http"
 	"strings"
 	"unicode"
@@ -82,12 +81,10 @@ func handlePOST(r *render.Request) (render.Render, error) {
 		password = r.FormValue("password")
 	)
 
-	s, err := r.Session.Signin(username, password)
+	_, err := r.Session.Signin(username, password)
 	if err != nil {
 		return render.Empty, err
 	}
-
-	log.Println("Received session:", s)
 
 	// Confirm that we do indeed have a token cookie.
 	tcookie := r.TokenCookie()

@@ -30,8 +30,6 @@ func (r Request) Param(s string) string {
 // SetSession sets the written token cookie to the given session. The given
 // session can be nil.
 func (r *Request) SetSession(s *smolboard.Session) {
-	log.Println("Setting session to", s)
-
 	if s != nil {
 		r.Tx.Session = *s
 	} else {

@@ -81,14 +81,21 @@ func (r *Request) TokenCookie() *http.Cookie {
 
 // FlushCookies dumps all the session state's cookies to the response writer.
 func (r *Request) FlushCookies() {
-	// We should only flush cookies newer than current time. This is because
-	// cookies that don't have expiry times are from the browser, so we don't
-	// need to echo the same cookie back.
-	var now = time.Now()
+	// // We should only flush cookies newer than current time. This is because
+	// // cookies that don't have expiry times are from the browser, so we don't
+	// // need to echo the same cookie back.
+	// var now = time.Now()
 
 	for _, cookie := range r.Session.Client.Cookies() {
-		if cookie.Expires.After(now) {
-			http.SetCookie(r.Writer, cookie)
+		http.SetCookie(r.Writer, cookie)
+
+		// Is this a token cookie? Is it invalidated? If yes, then we should
+		// invalidate the username cookie too.
+		if cookie.Name == "token" && cookie.Value == "" {
+			http.SetCookie(r.Writer, &http.Cookie{
+				Name:    "username",
+				Expires: time.Unix(0, 0), // set to the past
+			})
 		}
 	}
 }

@@ -1,6 +1,6 @@
 <nav>
 	<a href="/posts">
-		<h2>
+		<h2 title="Go to Gallery Page">
 			<span class="icon-home"></span>
 			<span class="sitename">
 				{{ with .Config.SiteName }}
@@ -16,7 +16,7 @@
 
 	{{ with .Username }}
 	<form class="user seamless" method="get" action="/posts">
-		<button type="submit" name="q" value="@{{.}}">
+		<button type="submit" name="q" value="@{{.}}" title="User">
 			<h4>
 				<span class="username valid">{{ . }}</span>
 				<span class="icon-user"></span>
@@ -25,7 +25,7 @@
 	</form>
 	{{ else }}
 	<form class="user seamless" method="get" action="/signin">
-		<button type="submit">
+		<button type="submit" title="Sign in">
 			<h4>
 				<span class="username">Sign in</span>
 				<span class="icon-lock"></span>

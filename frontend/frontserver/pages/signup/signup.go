@@ -1,4 +1,4 @@
-package signin
+package signup
 
 import (
 	"log"
@@ -95,12 +95,13 @@ func handlePOST(r *render.Request) (render.Render, error) {
 		return render.Empty, errors.New("Server error: token cookie not found")
 	}
 
-	// Set the username cookie.
-	http.SetCookie(r.Writer, &http.Cookie{
-		Name:   "username",
-		Value:  username,
-		Domain: tcookie.Domain,
-	})
+	// Copy the token cookie and use it for the username. This ensures that the
+	// expiry dates and other fields are kept the same.
+	ucookie := *tcookie
+	ucookie.Name = "username"
+	ucookie.Value = username
+
+	http.SetCookie(r.Writer, &ucookie)
 
 	r.Redirect(r.Referer(), http.StatusFound)
 	return render.Empty, nil

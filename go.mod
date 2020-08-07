@@ -17,12 +17,14 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-test/deep v1.0.7
+	github.com/google/btree v1.0.0 // indirect
 	github.com/gorilla/schema v1.1.0
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/markbates/pkger v0.17.0
 	github.com/mattn/go-shellwords v1.0.10
 	github.com/mattn/go-sqlite3 v1.14.0
 	github.com/pelletier/go-toml v1.8.0
+	github.com/peterbourgon/diskv v2.0.1+incompatible
 	github.com/pixiv/go-libjpeg v0.0.0-20190822045933-3da21a74767d
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5

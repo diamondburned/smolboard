@@ -1,6 +1,5 @@
 .post {
 	flex: 1;
-
 	display: flex;
 	flex-direction: column;
 }
@@ -10,16 +9,59 @@
 	align-items: stretch;
 }
 
+/* These are required for the image to not go over the height */
+body.post-page {
+	height: 100vh;
+}
+
+.post,
+.post > .content {
+	overflow: hidden;
+}
+
+.post aside {
+	overflow: overlay;
+}
+
+@media (max-width: 600px) {
+	/* Allow scrolling on mobile */
+	body.post-page {
+		height: auto;
+	}
+
+	.post,
+	.post > .content {
+		overflow: unset;
+	}
+}
+
+.post aside form .tag-row {
+    display: flex;
+    justify-content: space-between;
+}
+
 .post aside form .tag {
 	background: inherit;
 	text-align: start;
 	color: var(--a-link-color);
 }
+
 .post aside form .tag:hover {
 	text-decoration: underline;
 }
 
-.post aside form .add {
+.post aside form .delete-tag {
+	transition: linear 70ms;
+	color: var(--secondary-fore-color);
+}
+
+.post aside form .delete-tag:hover {
+	color: var(--input-invalid-color);
+	background-color: var(--button-hover-back-color);
+	text-decoration: none;
+}
+
+.post aside form input.add {
 	height: 2em;
 }
 
@@ -39,14 +81,17 @@
 .post main {
 	margin: var(--universal-margin);
 	margin-left: 0;
-
-	/* width:       100%; */
 	line-height: 0;
 }
 
 .post main > * {
-	width: 100%;
+	width:  auto;
 	height: auto;
+
+	max-width:  100%;
+	max-height: 100%;
+
+	box-sizing: border-box;
 
 	border: .0625rem solid var(--form-border-color);
 	border-radius: var(--universal-border-radius);

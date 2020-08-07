@@ -1,20 +1,7 @@
 package middleware
 
 import (
-	"bufio"
-	"io"
 	"net/http"
-
-	"github.com/c2h5oh/datasize"
-	"github.com/diamondburned/smolboard/server/http/upload"
-	"github.com/go-chi/chi/middleware"
-)
-
-var (
-	Compress  = middleware.Compress
-	RealIP    = middleware.RealIP
-	Throttle  = middleware.Throttle
-	Recoverer = middleware.Recoverer
 )
 
 // F represents a middleware function.
@@ -36,26 +23,4 @@ func P(h H) F {
 			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-func LimitBody(size datasize.ByteSize) F {
-	return P(func(w http.ResponseWriter, r *http.Request) bool {
-		r.Body = newReadCloser(
-			upload.NewLimitedReader(
-				bufio.NewReader(r.Body),
-				int64(size.Bytes()),
-			),
-			r.Body,
-		)
-		return true
-	})
-}
-
-type readCloser struct {
-	io.Reader
-	io.Closer
-}
-
-func newReadCloser(r io.Reader, c io.Closer) readCloser {
-	return readCloser{r, c}
 }

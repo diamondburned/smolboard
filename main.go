@@ -1,23 +1,29 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
+	"time"
 
+	"github.com/andybalholm/brotli"
 	"github.com/diamondburned/smolboard/frontend/frontserver"
 	"github.com/diamondburned/smolboard/server"
 	"github.com/diamondburned/smolboard/server/http/upload"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/net/http2"
 
 	toml "github.com/pelletier/go-toml"
 )
@@ -126,7 +132,13 @@ func main() {
 			log.Fatalln("Failed to create instance:", err)
 		}
 
+		c := middleware.NewCompressor(5)
+		c.SetEncoder("br", func(w io.Writer, level int) io.Writer {
+			return brotli.NewWriterLevel(w, level)
+		})
+
 		mux := chi.NewMux()
+		mux.Use(c.Handler)
 		mux.Mount("/api/v1", a)
 
 		if !noFrontend {
@@ -160,25 +172,39 @@ func main() {
 			}
 		}
 
-		log.Println("Starting listener at socket", l.Addr())
-
-		if err := http.Serve(l, mux); err != nil {
-			log.Fatalln("Failed to start:", err)
+		var server = http.Server{
+			Handler: mux,
 		}
-	}
-}
 
-func sh(cmd string) {
-	c := exec.Command("sh", "-c", cmd)
-	c.Stdin = os.Stdin
-	c.Stderr = os.Stderr
-	c.Stdout = os.Stdout
-	c.Env = append(os.Environ(),
-		"GOOS=js",
-		"GOARCH=wasm",
-	)
+		// Explicitly set up HTTP/2.
+		err = http2.ConfigureServer(&server, &http2.Server{
+			MaxHandlers:          4096,
+			MaxConcurrentStreams: 1024,
+		})
 
-	if err := c.Run(); err != nil {
-		log.Fatalln(err)
+		if err != nil {
+			log.Fatalln("Failed to configure HTTP/2 server:", err)
+		}
+
+		log.Println("Starting HTTP/2 listener at socket", l.Addr())
+
+		go func() {
+			if err := server.Serve(l); err != nil {
+				log.Fatalln("Failed to start:", err)
+			}
+		}()
+
+		// Handle SIGINT and gracefully close the server.
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+		<-sig
+
+		// Give the server a 10 seconds timeout for shutting down.
+		ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			log.Fatalln("Failed to gracefully close the server:", err)
+		}
 	}
 }

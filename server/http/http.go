@@ -8,7 +8,7 @@ import (
 	"github.com/c2h5oh/datasize"
 	"github.com/diamondburned/smolboard/server/db"
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
-	"github.com/diamondburned/smolboard/server/http/internal/middleware"
+	"github.com/diamondburned/smolboard/server/http/internal/limread"
 	"github.com/diamondburned/smolboard/server/http/internal/tx"
 	"github.com/diamondburned/smolboard/server/http/post"
 	"github.com/diamondburned/smolboard/server/http/token"
@@ -16,6 +16,7 @@ import (
 	"github.com/diamondburned/smolboard/server/http/upload/imgsrv"
 	"github.com/diamondburned/smolboard/server/http/user"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 )
 
 type HTTPConfig struct {
@@ -66,7 +67,7 @@ func New(db *db.Database, cfg HTTPConfig) (*Routes, error) {
 		middleware.RealIP,
 		middleware.Recoverer,
 		middleware.Compress(5),
-		middleware.LimitBody(cfg.MaxBodySize),
+		limread.LimitBody(cfg.MaxBodySize),
 	)
 
 	mux.Group(func(mux chi.Router) {

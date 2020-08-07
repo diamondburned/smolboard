@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -8,7 +9,10 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
+	"github.com/andybalholm/brotli"
 	"github.com/diamondburned/smolboard/frontend/frontserver"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 )
@@ -82,14 +86,23 @@ func main() {
 		log.Fatalln("Config error:", err)
 	}
 
+	c := middleware.NewCompressor(5)
+	c.SetEncoder("br", func(w io.Writer, level int) io.Writer {
+		return brotli.NewWriterLevel(w, level)
+	})
+
 	f, err := frontserver.NewWithHTTPBackend(cfg.BackendAddress, cfg.FrontConfig)
 	if err != nil {
 		log.Fatalln("Failed to create frontend:", err)
 	}
 
+	m := chi.NewMux()
+	m.Use(c.Handler)
+	m.Mount("/", f)
+
 	log.Println("Listening to", cfg.ListenAddress)
 
-	if err := http.ListenAndServe(cfg.ListenAddress, f); err != nil {
+	if err := http.ListenAndServe(cfg.ListenAddress, m); err != nil {
 		log.Fatalln("Failed to listen/serve:", err)
 	}
 }

@@ -1,155 +1,146 @@
-<div class="gallery">
-	{{ template "nav" . }}
-
-	<div class="content">
-		<aside>
-			<div class="gallery-info">
-				<legend>Gallery Information</legend>
-
-				<div class="gallery-table table">
-					<span>Total</span>
-					<span id="total">{{ humanizeNumber .Total }}</span>
-
-					<span>Size</span>
-					<span id="size">{{ humanizeSize .Sizes }}</span>
+<body>
+	<div class="gallery">
+		{{ template "nav" . }}
+	
+		<div class="content">
+			<aside>
+				<div class="gallery-info">
+					<legend>Gallery Information</legend>
+	
+					<div class="gallery-table table">
+						<span>Total</span>
+						<span id="total">{{ humanizeNumber .Total }}</span>
+	
+						<span>Size</span>
+						<span id="size">{{ humanizeSize .Sizes }}</span>
+					</div>
 				</div>
-			</div>
-
-			{{ if (gt .Total 25) }}
-			<form class="paginator" action="/posts">
-				<legend>Gallery Page</legend>
-
-				<input type="hidden" name="q" value={{ .Query }}>
-
-				{{ $lastPage := (numPages .Total) }}
-				{{ $prevPage := (dec .Page) }}
-				{{ $nextPage := (inc .Page) }}
-
-				<div class="page-buttons">
-					<button type="submit" class="last-page small" name="p"
-						{{ if (gt $prevPage 0) }}
-						value="{{ $prevPage }}"
-						{{ else }}
-						disabled
-						{{ end }}
-					>
-						❮ Prev
-					</button>
-
-					<input type="submit" style="display: none">
-					<input type="number" class="page-input small"
-						   min="1" max="{{ $lastPage }}" value="{{ .Page }}"
-					>
-					<span class="max-page"> / {{ $lastPage }}</span>
-
-					<button type="submit" class="next-page small" name="p"
-						{{ if (le $nextPage $lastPage) }}
-						value="{{ $nextPage }}"
-						{{ else }}
-						disabled
-						{{ end }}
-					>
-						Next ❯
-					</button>
-				</div>
-			</form>
-			{{ end }}
-
-			{{ with .User }}
-			<div class="search-user-info">
-				<legend>User Information</legend>
-
-				<div class="user-table table">
-					<span>Joined</span>
-					<time datetime="{{ htmlTime .Joined }}" id="join-time">
-						{{ humanizeTime .Joined }}
-					</time>
-
-					<span>Permission</span>
-					<span id="permission">{{ .Permission }}</span>
-				</div>
-			</div>
-			{{ end }}
-
-			{{ with .AllowedUploadPerms }}
-			<form class="uploader"
-				  action="/posts" method="post"
-				  enctype="multipart/form-data"
-			>
-				<legend>Upload Files</legend>
-
-				<input  type="file"     name="file" multiple>
-				<select id="permission" name="p">
-					{{ range . }}
-					<option value="{{ .StringInt }}">{{ . }}</option>
-					{{ end }}
-				</select>
-
-				<input type="submit" value="Upload" class="small">
-			</form>
-			{{ end }}
-
-			{{ if .IsAdmin }}
-			<div class="tokens">
-				<legend>Invite Tokens</legend>
-
-				<div class="token-list">
-					{{ template "tokenList" .Tokens }}
-				</div>
-
-				<form class="add-token seamless" action="/tokens" method="post">
-					{{ $min := .MinTokenUses }}
-
-					<p class="info">
-						<span>Create Token</span>
-						<span class="range">{{ $min }} to {{ .MaxUses }}</span>
-					</p>
-
-					<div class="form-group">
-						<input type="number" class="small" name="uses"
-							   value="1" min="{{ $min }}" max="{{ .MaxUses }}">
-						<input type="submit" class="small" value="＋">
+	
+				{{ if (gt .Total 25) }}
+				<form class="paginator" action="/posts">
+					<legend>Gallery Page</legend>
+	
+					<input type="hidden" name="q" value={{ .Query }}>
+	
+					{{ $lastPage := (numPages .Total) }}
+					{{ $prevPage := (dec .Page) }}
+					{{ $nextPage := (inc .Page) }}
+	
+					<div class="page-buttons">
+						<button type="submit" class="last-page small" name="p"
+							{{ if (gt $prevPage 0) }}
+							value="{{ $prevPage }}"
+							{{ else }}
+							disabled
+							{{ end }}
+						>
+							❮ Prev
+						</button>
+	
+						<input type="submit" style="display: none">
+						<input type="number" class="page-input small"
+							   alt="Page Number"
+							   min="1" max="{{ $lastPage }}" value="{{ .Page }}"
+						>
+						<span class="max-page"> / {{ $lastPage }}</span>
+	
+						<button type="submit" class="next-page small" name="p"
+							{{ if (le $nextPage $lastPage) }}
+							value="{{ $nextPage }}"
+							{{ else }}
+							disabled
+							{{ end }}
+						>
+							Next ❯
+						</button>
 					</div>
 				</form>
-			</div>
-			{{ end }}
-
-			{{ if .Username }}
-			<form class="logout" action="/signout" method="post">
-				<button type="submit" class="small">Sign out</button>
-			</form>
-			{{ end }}
-		</aside>
-
-		<main class="posts row">
-			{{ range .Posts }}
-			<figure class="gallery-post card">
-				<a href="/posts/{{.ID}}">
-					{{ if (isImage .ContentType) }}
-					<img loading="lazy" {{ $.SizeAttr . }}
-						 src="{{ $.Session.PostThumbURL . }}"
-						 style="background-image: url('{{ $.InlineImage . }}')">
+				{{ end }}
 	
-					{{ else if (isVideo .ContentType) }}
-					<video alt="Video" preload="metadata" {{ $.SizeAttr . }}
-						   src="{{ $.Session.PostThumbURL . }}#t=0.1"
-						   style="background-image: url('{{ $.InlineImage . }}')">
+				{{ with .User }}
+				<div class="search-user-info">
+					<legend>User Information</legend>
 	
-					{{ else }}
-					<div>
-						<p><span class=".icon-link"></span></p>
-						<p>{{ .ContentType }}</p>
+					<div class="user-table table">
+						<span>Joined</span>
+						<time datetime="{{ htmlTime .Joined }}" id="join-time">
+							{{ humanizeTime .Joined }}
+						</time>
+	
+						<span>Permission</span>
+						<span id="permission">{{ .Permission }}</span>
+					</div>
+				</div>
+				{{ end }}
+	
+				{{ with .AllowedUploadPerms }}
+				<form class="uploader"
+					  action="/posts" method="post"
+					  enctype="multipart/form-data"
+				>
+					<legend>Upload Files</legend>
+	
+					<input  type="file"     name="file" multiple>
+					<select id="permission" name="p">
+						{{ range . }}
+						<option value="{{ .StringInt }}">{{ . }}</option>
+						{{ end }}
+					</select>
+	
+					<input type="submit" value="Upload" class="small">
+				</form>
+				{{ end }}
+	
+				{{ if .IsAdmin }}
+				<div class="tokens">
+					<legend>Invite Tokens</legend>
+	
+					<div class="token-list">
+						{{ template "tokenList" .Tokens }}
 					</div>
 	
-					{{ end }}
-				</a>
-			</figure>
-			{{ end }}
-		</main>
+					<form class="add-token seamless" action="/tokens" method="post">
+						{{ $min := .MinTokenUses }}
+	
+						<p class="info">
+							<span>Create Token</span>
+							<span class="range">{{ $min }} to {{ .MaxUses }}</span>
+						</p>
+	
+						<div class="form-group">
+							<input type="number" class="small" name="uses"
+								   value="1" min="{{ $min }}" max="{{ .MaxUses }}">
+							<input type="submit" class="small" value="＋">
+						</div>
+					</form>
+				</div>
+				{{ end }}
+	
+				{{ if .Username }}
+				<form class="logout" action="/signout" method="post">
+					<button type="submit" class="small">Sign out</button>
+				</form>
+				{{ end }}
+			</aside>
+	
+			<main class="posts row">
+				{{ range .Posts }}
+				<figure class="gallery-post card">
+					<a href="/posts/{{.ID}}">
+						<img alt="" {{ $.SizeAttr . }}
+							 src="{{ $.Session.PostThumbURL . }}"
+							 style="background-image: url('{{ $.InlineImage . }}')"
+						>
+						</object>
+					</a>
+				</figure>
+				{{ end }}
+			</main>
+		</div>
 	</div>
-</div>
-
-{{ template "footer" }}
+	
+	{{ template "footer" }}
+</body>
 
 {{ define "tokenList" }}
 

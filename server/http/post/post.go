@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/c2h5oh/datasize"
 	"github.com/diamondburned/smolboard/server/http/internal/form"
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
 	"github.com/diamondburned/smolboard/server/http/internal/tx"
@@ -39,10 +38,8 @@ func Mount(m tx.Middlewarer) http.Handler {
 }
 
 func preparseMultipart(next http.Handler) http.Handler {
-	const formLimit = int64(2 * datasize.MB)
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseMultipartForm(formLimit); err != nil {
+		if err := r.ParseMultipartForm(0); err != nil {
 			tx.RenderWrap(w, err, 400, "Failed to parse form")
 			return
 		}
@@ -105,7 +102,7 @@ func UploadPost(r tx.Request) (interface{}, error) {
 		if err := r.Tx.SavePost(post); err != nil {
 			// Something failed. Before we exit, we need to clean up all
 			// downloaded files.
-			r.Up.RemovePosts(posts)
+			r.Up.CleanupPosts(posts)
 
 			return nil, errors.Wrap(err, "Failed to save post")
 		}
@@ -119,6 +116,8 @@ func DeletePost(r tx.Request) (interface{}, error) {
 	if err != nil {
 		return nil, smolboard.ErrPostNotFound
 	}
+
+	panic("Implement delete from FS and cache")
 
 	return nil, r.Tx.DeletePost(i)
 }

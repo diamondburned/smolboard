@@ -179,13 +179,14 @@ func pageRender(r *render.Request) (render.Render, error) {
 	}
 
 	return render.Render{
-		Title: "Gallery",
-		Body:  tmpl.Render(renderCtx),
+		Title:       "Gallery",
+		Description: fmt.Sprintf("%d posts with %s", p.Total, query),
+		Body:        tmpl.Render(renderCtx),
 	}, nil
 }
 
 func uploader(r *render.Request) (render.Render, error) {
-	q, err := http.NewRequest("POST", r.Session.Endpoint("/posts"), r.Body)
+	q, err := http.NewRequestWithContext(r.Context(), "POST", r.Session.Endpoint("/posts"), r.Body)
 	if err != nil {
 		return render.Empty, errors.Wrap(err, "Failed to create request")
 	}

@@ -96,7 +96,7 @@ func (s *Session) PostDirectURL(post smolboard.Post) string {
 }
 
 func (s *Session) PostThumbURL(post smolboard.Post) string {
-	return fmt.Sprintf("%s/%s/%s/thumb", s.Client.Endpoint(), "images", post.Filename())
+	return fmt.Sprintf("%s/%s/%s/thumb.jpg", s.Client.Endpoint(), "images", post.Filename())
 }
 
 func (s *Session) DeletePost(id int64) error {
@@ -127,7 +127,7 @@ func (s *Session) UntagPost(id int64, tag string) error {
 		return err
 	}
 
-	return s.Client.Post(fmt.Sprintf("/posts/%d/tags", id), nil, url.Values{
+	return s.Client.Delete(fmt.Sprintf("/posts/%d/tags", id), nil, url.Values{
 		"t": {tag},
 	})
 }

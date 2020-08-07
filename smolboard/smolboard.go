@@ -15,6 +15,9 @@ import (
 	"github.com/mattn/go-shellwords"
 )
 
+// MaxUsernameLen is the maximum username length.
+const MaxUsernameLen = 128
+
 // NameIsLegal returns whether or not name contains illegal characters. It
 // returns nil if the name does not contain any.
 //
@@ -22,6 +25,10 @@ import (
 func NameIsLegal(name string) error {
 	if name == "" {
 		return ErrIllegalName
+	}
+
+	if len(name) > MaxUsernameLen {
+		return ErrUsernameTooLong
 	}
 
 	// testDigitLetter tests if a rune is not a digit or letter. It returns true
@@ -467,6 +474,7 @@ var (
 	ErrUserNotFound       = httperr.New(404, "user not found")
 	ErrInvalidPassword    = httperr.New(401, "invalid password")
 	ErrPasswordTooShort   = httperr.New(400, "password too short")
+	ErrUsernameTooLong    = httperr.New(400, "username too long")
 	ErrUsernameTaken      = httperr.New(409, "username taken")
 	ErrIllegalName        = httperr.New(403, "username contains illegal characters")
 )

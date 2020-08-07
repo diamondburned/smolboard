@@ -66,13 +66,16 @@ main.posts {
 
 main.posts .gallery-post.card {
 	width: auto;
+	max-width: calc(100% - var(--universal-margin));
+
 	margin-left: 0;
 	margin-top:  0;
+
 	transition: linear 75ms;
 }
 
 main.posts .gallery-post.card:hover {
-	-webkit-filter: brightness(90%) contrast(110%);
+	filter: brightness(90%) contrast(110%);
 }
 
 main.posts .gallery-post a {
@@ -85,14 +88,14 @@ main.posts .gallery-post a > * {
 	object-fit: cover;
 	height: 200px;
 	width: auto;
-	max-width: 500px;
+	max-width: 350px;
 	background-size: cover;
 	background-repeat: no-repeat;
 }
 
 @media (max-width: 600px) {
 	main.posts .gallery-post a > * {
-		height: 300px;
+		height: 250px;
 		max-width: 400px;
 	}
 	.gallery aside > *:first-child {

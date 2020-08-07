@@ -3,17 +3,17 @@ package render
 import (
 	"fmt"
 	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
-	"github.com/andybalholm/brotli"
 	"github.com/diamondburned/smolboard/client"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/markbates/pkger"
+	"github.com/pkg/errors"
 )
 
 // Renderer represents a renderable page.
@@ -48,9 +48,10 @@ func (c *Config) Validate() error {
 }
 
 type renderCtx struct {
-	Theme  Theme
-	Render Render
-	Config Config
+	Theme     Theme
+	Render    Render
+	Config    Config
+	BodyClass string
 }
 
 func (r renderCtx) FormatTitle() string {
@@ -61,10 +62,10 @@ func (r renderCtx) FormatTitle() string {
 }
 
 type Request struct {
-	*http.Request
-	Writer FlushWriter
-	pusher http.Pusher
 	CommonCtx
+
+	Writer http.ResponseWriter
+	pusher http.Pusher
 }
 
 // TokenCookie returns the cookie that contains the token if any or nil if
@@ -80,8 +81,15 @@ func (r *Request) TokenCookie() *http.Cookie {
 
 // FlushCookies dumps all the session state's cookies to the response writer.
 func (r *Request) FlushCookies() {
+	// We should only flush cookies newer than current time. This is because
+	// cookies that don't have expiry times are from the browser, so we don't
+	// need to echo the same cookie back.
+	var now = time.Now()
+
 	for _, cookie := range r.Session.Client.Cookies() {
-		http.SetCookie(r.Writer, cookie)
+		if cookie.Expires.After(now) {
+			http.SetCookie(r.Writer, cookie)
+		}
 	}
 }
 
@@ -120,10 +128,11 @@ func (r *Request) Redirect(path string, code int) {
 }
 
 type CommonCtx struct {
+	*http.Request
+
 	Config   Config
-	Request  *http.Request
-	Session  *client.Session
 	Username string
+	Session  *client.Session
 }
 
 func pushAssets(next http.Handler) http.Handler {
@@ -148,19 +157,15 @@ type Mux struct {
 }
 
 func newMux() *chi.Mux {
-	c := middleware.NewCompressor(5)
-	c.SetEncoder("br", func(w io.Writer, level int) io.Writer {
-		return brotli.NewWriterLevel(w, level)
-	})
-
 	r := chi.NewMux()
 	r.Use(ThemeM)
-	r.Use(c.Handler)
-	r.Post("/theme", handleSetTheme)
+
+	r.With(middleware.NoCache).Post("/theme", handleSetTheme)
 	r.Route("/static", func(r chi.Router) {
 		r.Get("/components.css", componentsCSSHandler)
 		r.Mount("/", http.FileServer(pkger.Dir("/frontend/frontserver/static/")))
 	})
+
 	return r
 }
 
@@ -192,7 +197,9 @@ func (m *Mux) SetErrorRenderer(r ErrorRenderer) {
 	m.errR = r
 }
 
-func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) *Request {
+// NewRequest makes a new internal request struct. The returned Request pointer
+// is never nil.
+func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) (*Request, error) {
 	c, err := m.client(r)
 	if err != nil {
 		// Host is a constant, so we can panic here.
@@ -201,23 +208,40 @@ func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) *Request {
 
 	s := client.NewSessionWithClient(c)
 
-	// Try and grab the username from the cookies. Only use this username value
-	// for visual purposes, such as displaying.
-	var username string
-	if c, err := r.Cookie("username"); err == nil {
-		username = c.Value
+	request := &Request{
+		CommonCtx: CommonCtx{
+			Config:  m.cfg,
+			Request: r,
+			Session: s,
+		},
+		Writer: w,
 	}
 
-	return &Request{
-		Request: r,
-		Writer:  TryFlushWriter(w),
-		CommonCtx: CommonCtx{
-			Config:   m.cfg,
-			Request:  r,
-			Session:  s,
-			Username: username,
-		},
+	// Try and grab the username from the cookies. Only use this username value
+	// for visual purposes, such as displaying.
+	if c, err := r.Cookie("username"); err == nil {
+		request.CommonCtx.Username = c.Value
+
+	} else {
+		// Update the username cookie if there's a token cookie.
+		if _, err := r.Cookie("token"); err == nil {
+			u, err := s.Me()
+			if err != nil {
+				return request, errors.Wrap(err, "Failed to get current user")
+			}
+
+			request.CommonCtx.Username = u.Username
+
+			http.SetCookie(w, &http.Cookie{
+				Name:  "username",
+				Value: u.Username,
+				// We're not setting an Expiry here so the cookie will expire
+				// when the browser exits.
+			})
+		}
 	}
+
+	return request, nil
 }
 
 // M is the middleware wrapper.
@@ -226,28 +250,17 @@ func (m *Mux) M(render Renderer) http.HandlerFunc {
 		// Write the proper headers.
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-		var request = m.NewRequest(w, r)
+		var page Render
 
-		page, err := render(request)
+		// Make a new request. If that works, then we render the page.
+		request, err := m.NewRequest(w, r)
+		if err == nil {
+			page, err = render(request)
+		}
+
+		// If either of the above failed, then render it as an error page.
 		if err != nil {
-			// Copy the status code if available. Else, fallback to 500.
-			w.WriteHeader(client.ErrGetStatusCode(err, 500))
-
-			// If there is no error renderer, then we just write the error down
-			// in plain text.
-			if m.errR == nil {
-				fmt.Fprintf(w, "Error: %v", err)
-				return
-			}
-
-			// Render the error page.
-			page, err = m.errR(request, err)
-			if err != nil {
-				// This shouldn't error out, so we should log it.
-				log.Println("Error rendering error page:", err)
-				return
-			}
-
+			page = m.renderError(err, request)
 		} else {
 			// Flush the cookies before writing the body if there is no error.
 			request.FlushCookies()
@@ -271,16 +284,38 @@ func (m *Mux) M(render Renderer) http.HandlerFunc {
 	}
 }
 
+func (m *Mux) renderError(err error, r *Request) Render {
+	// Copy the status code if available. Else, fallback to 500.
+	r.Writer.WriteHeader(client.ErrGetStatusCode(err, 500))
+
+	// If there is no error renderer, then we just write the error down
+	// in plain text.
+	if m.errR == nil {
+		fmt.Fprintf(r.Writer, "Error: %v", err)
+		return Empty
+	}
+
+	// Render the error page.
+	page, err := m.errR(r, err)
+	if err != nil {
+		// This shouldn't error out, so we should log it.
+		log.Println("Error rendering error page:", err)
+		return Empty
+	}
+
+	return page
+}
+
 func (m *Mux) Get(route string, r Renderer) {
-	m.Mux.Get(route, m.M(r))
+	m.Mux.With(middleware.NoCache).Get(route, m.M(r))
 }
 
 func (m *Mux) Post(route string, r Renderer) {
-	m.Mux.Post(route, m.M(r))
+	m.Mux.With(middleware.NoCache).Post(route, m.M(r))
 }
 
 func (m *Mux) Delete(route string, r Renderer) {
-	m.Mux.Delete(route, m.M(r))
+	m.Mux.With(middleware.NoCache).Delete(route, m.M(r))
 }
 
 // Muxer implements the interface that's passable to pages' mount functions.
@@ -289,5 +324,5 @@ type Muxer interface {
 }
 
 func (m *Mux) Mount(route string, mounter func(Muxer) http.Handler) {
-	m.Mux.Mount(route, mounter(m))
+	m.Mux.With(middleware.NoCache).Mount(route, mounter(m))
 }

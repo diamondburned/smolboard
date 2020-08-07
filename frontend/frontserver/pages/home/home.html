@@ -1,20 +1,23 @@
-<main class="home">
-	<div class="banner">
-		<h1><a href="/posts">{{ .Config.SiteName }}</a></h1>
-		<div class="sidebar">
-			<a href="/posts">Posts</a>
-
-			{{ with .Username }}
-			<form class="user seamless" action="/posts" method="get">
-				<span>Logged in as </span>
-				<button type="submit" name="q" value="@{{.}}">
-					{{ . }}
-				</button>
-			</form>
-			{{ end }}
+<body>
+	<main class="home">
+		<div class="banner">
+			<h1><a href="/posts">{{ .Config.SiteName }}</a></h1>
+			<div class="sidebar">
+				<a href="/posts">Posts</a>
+	
+				{{ with .Username }}
+				<form class="user seamless" action="/posts" method="get">
+					<span>Logged in as </span>
+					<button type="submit" name="q" value="@{{.}}">
+						{{ . }}
+					</button>
+				</form>
+				{{ end }}
+			</div>
 		</div>
-	</div>
+	
+		{{ template "search" }}
+	</main>
 
-	{{ template "search" }}
-</main>
-{{ template "footer" }}
+	{{ template "footer" }}
+</body>

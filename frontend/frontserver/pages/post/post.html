@@ -1,134 +1,147 @@
-<div class="post">
-	{{ template "nav" . }}
-
-	<div class="content">
-		{{ with .Post }}
-
-		<aside>
-			<form>
-				<legend>Tags</legend>
-				{{/* This has to be first for the tag input to work */}}
-				<input type="submit" style="display: none"
-					   name="submit"
-					   formaction="/posts/{{.ID}}/tag" formmethod="post" />
-
-				{{ range .Tags }}
-				<input type="submit" class="tag"
-					   formaction="/posts"
-					   name="q" value="{{ .TagName }}" />
-				{{ else }}
-				<p class="no-tag-msg">No tags.</p>
-				{{ end }}
-
-				{{ if $.CanChangePost }}
-				<input type="text" class="add"
-					   name="tag" placeholder="Add a tag..."
-					   formaction="/posts/{{.ID}}/tag" formmethod="post" />
-				{{ end }}
-			</form>
-
-			<div class="post-share">
-				<legend>Share</legend>
-
-				<a role="button" class="post-link small"
-				   href="/posts/{{.ID}}"
-				>
-					<span class="icon-share secondary"></span>
-					<span>Post Link</span>
-				</a>
-
-				<a role="button" class="original-image primary small"
-				   href="{{ $.Session.PostDirectURL .Post }}"
-				>
-					<span class="icon-link secondary inverse"></span>
-					<span>Original Image</span>
-				</a>
-			</div>
-
-			<div class="post-info">
-				<legend>Information</legend>
-
-				<div class="post-table table">
-					<span>ID</span>
-					<span id="id">{{ .ID }}</span>
-
-					<span>Size</span>
-					<span id="size">{{ humanizeSize .Size }}</span>
-
-					{{ if (and .Attributes.Width .Attributes.Height) }}
-					<span>Dimensions</span>
-					<span id="dimensions">{{.Attributes.Width}}x{{.Attributes.Height}}</span>
-					{{ end }}
-
-					<span>Poster</span>
-					<span id="poster">{{ .Poster }}</span>
-
-					<span>Date</span>
-					<time datetime="{{ htmlTime .CreatedTime }}" id="created-time">
-						{{ humanizeTime .CreatedTime }}
-					</time>
-
-					<span>Permission</span>
-					<span id="permission">{{ .Permission }}</span>
-				</div>
-			</div>
-
-			{{ if $.Username }}
-			<div class="post-actions sensitive">
-				<legend>Actions</legend>
-
-				{{ if $.CanChangePost }}
-				<form class="seamless" action="/posts/{{.ID}}/delete" method="post">
-					<button type="submit" class="small secondary">
-						<span class="icon-alert secondary inverse"></span>
-						<span>Delete Post</span>
-					</button>
-				</form>
-				{{ end }}
-			</div>
-
-			<div class="post-promote sensitive">
-				<legend>Permission</legend>
-
-				<form class="seamless" action="/posts/{{.ID}}/permission" method="post">
-					{{ range $i, $permission := allPermissions }}
-					{{ if ($.CanSetPerm $permission) }}
-					<button type="submit" class="small"
-							name="p" value="{{ $permission.StringInt }}"
-					>
-						{{ $permission }}
-					</button>
-					{{ end }}
-					{{ end }}
-				</form>
-			</div>
-			{{ end }}
-		</aside>
-
-		<main>
+<body class="post-page">
+	<div class="post">
+		{{ template "nav" . }}
+	
+		<div class="content">
 			{{ with .Post }}
-
-			{{ if (isImage .ContentType) }}
-			<img {{ $.ImageSizeAttr . }}
-				 src="{{ $.Session.PostDirectURL . }}"
-				 style="background-image: url('{{ $.Session.PostThumbURL . }}')" />
-
-			{{ else if (isVideo .ContentType) }}
-			<video preload="all" controls src="{{ $.Session.PostDirectURL . }}#t=0.1" />
-
-			{{ else }}
-			<div>
-				<p><span class=".icon-link"></span></p>
-				<p>{{ .ContentType }}</p>
-			</div>
-
+	
+			<aside>
+				<form class="tags">
+					<legend>Tags</legend>
+					{{/* This has to be first for the tag input to work */}}
+					<input type="submit" style="display: none"
+						   name="submit"
+						   formaction="/posts/{{.ID}}/tag" formmethod="post"
+					/>
+	
+					{{ range .Tags }}
+					<div class="tag-row">
+						<input type="submit" class="tag"
+							   formaction="/posts"
+							   name="q" value="{{ .TagName }}"
+						/>
+						<button type="submit" class="tag delete-tag"
+								name="tag" value="{{ .TagName }}"
+								formaction="/posts/{{$.Post.ID}}/untag" formmethod="post"
+						>
+							×
+						</button>
+					</div>
+					{{ else }}
+					<p class="no-tag-msg">No tags.</p>
+					{{ end }}
+	
+					{{ if $.CanChangePost }}
+					<input type="text" class="add"
+						   name="tag" placeholder="Add a tag..."
+						   formaction="/posts/{{.ID}}/tag" formmethod="post"
+					/>
+					{{ end }}
+				</form>
+	
+				<div class="post-share">
+					<legend>Share</legend>
+	
+					<a role="button" class="post-link small"
+					   href="/posts/{{.ID}}"
+					>
+						<span class="icon-share secondary"></span>
+						<span>Post Link</span>
+					</a>
+	
+					<a role="button" class="original-image primary small"
+					   href="{{ $.Session.PostDirectURL .Post }}"
+					>
+						<span class="icon-link secondary inverse"></span>
+						<span>Original Image</span>
+					</a>
+				</div>
+	
+				<div class="post-info">
+					<legend>Information</legend>
+	
+					<div class="post-table table">
+						<span>ID</span>
+						<span id="id">{{ .ID }}</span>
+	
+						<span>Size</span>
+						<span id="size">{{ humanizeSize .Size }}</span>
+	
+						{{ if (and .Attributes.Width .Attributes.Height) }}
+						<span>Dimensions</span>
+						<span id="dimensions">{{.Attributes.Width}}x{{.Attributes.Height}}</span>
+						{{ end }}
+	
+						<span>Poster</span>
+						<span id="poster">{{ .Poster }}</span>
+	
+						<span>Date</span>
+						<time datetime="{{ htmlTime .CreatedTime }}" id="created-time">
+							{{ humanizeTime .CreatedTime }}
+						</time>
+	
+						<span>Permission</span>
+						<span id="permission">{{ .Permission }}</span>
+					</div>
+				</div>
+	
+				{{ if $.Username }}
+				<div class="post-actions sensitive">
+					<legend>Actions</legend>
+	
+					{{ if $.CanChangePost }}
+					<form class="seamless" action="/posts/{{.ID}}/delete" method="post">
+						<button type="submit" class="small secondary">
+							<span class="icon-alert secondary inverse"></span>
+							<span>Delete Post</span>
+						</button>
+					</form>
+					{{ end }}
+				</div>
+	
+				<div class="post-promote sensitive">
+					<legend>Permission</legend>
+	
+					<form class="seamless" action="/posts/{{.ID}}/permission" method="post">
+						{{ range $i, $permission := allPermissions }}
+						{{ if ($.CanSetPerm $permission) }}
+						<button type="submit" class="small"
+								name="p" value="{{ $permission.StringInt }}"
+						>
+							{{ $permission }}
+						</button>
+						{{ end }}
+						{{ end }}
+					</form>
+				</div>
+				{{ end }}
+			</aside>
+	
+			<main>
+				{{ with .Post }}
+	
+				{{ if (isImage .ContentType) }}
+				<img {{ $.ImageSizeAttr . }}
+					 src="{{ $.Session.PostDirectURL . }}"
+					 style="background-image: url('{{ $.Session.PostThumbURL . }}')" />
+	
+				{{ else if (isVideo .ContentType) }}
+				<video preload="all" controls src="{{ $.Session.PostDirectURL . }}#t=0.1" />
+	
+				{{ else }}
+				<div>
+					<p><span class=".icon-link"></span></p>
+					<p>{{ .ContentType }}</p>
+				</div>
+	
+				{{ end }}
+	
+				{{ end }}
+			</main>
+	
 			{{ end }}
-
-			{{ end }}
-		</main>
-
-		{{ end }}
+		</div>
 	</div>
-</div>
-
-{{ template "footer" }}
+	
+	{{ template "footer" }}
+</body>

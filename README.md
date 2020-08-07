@@ -38,6 +38,7 @@ Root
 ### Dependencies
 
 - libsqlite3
+- libjpeg
 - FFmpeg (optional)
 - FFprobe (optional)
 

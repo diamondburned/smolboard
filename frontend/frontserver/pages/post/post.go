@@ -23,7 +23,7 @@ func init() {
 	)
 }
 
-var tmpl = render.BuildPage("home", render.Page{
+var tmpl = render.BuildPage("post", render.Page{
 	Template: pkger.Include("/frontend/frontserver/pages/post/post.html"),
 	Components: map[string]render.Component{
 		"nav":    nav.Component,
@@ -78,6 +78,7 @@ func Mount(muxer render.Muxer) http.Handler {
 	mux.Post("/delete", muxer.M(deletePost))
 	mux.Post("/permission", muxer.M(changePermission))
 	mux.Post("/tag", muxer.M(tagPost))
+	mux.Post("/untag", muxer.M(untagPost))
 	return mux
 }
 
@@ -177,6 +178,22 @@ func tagPost(r *render.Request) (render.Render, error) {
 	}
 
 	// trim the /tags suffix
+	var postURL = path.Dir(r.URL.Path)
+
+	r.Redirect(postURL, http.StatusSeeOther)
+	return render.Empty, nil
+}
+
+func untagPost(r *render.Request) (render.Render, error) {
+	i, err := r.IDParam()
+	if err != nil {
+		return render.Empty, err
+	}
+
+	if err := r.Session.UntagPost(i, r.FormValue("tag")); err != nil {
+		return render.Empty, err
+	}
+
 	var postURL = path.Dir(r.URL.Path)
 
 	r.Redirect(postURL, http.StatusSeeOther)

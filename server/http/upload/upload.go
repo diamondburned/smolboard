@@ -1,28 +1,26 @@
 package upload
 
 import (
-	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
-	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/bbrks/go-blurhash"
 	"github.com/c2h5oh/datasize"
 	"github.com/diamondburned/smolboard/server/db"
+	"github.com/diamondburned/smolboard/server/http/internal/limread"
 	"github.com/diamondburned/smolboard/server/http/upload/atomdl"
-	"github.com/diamondburned/smolboard/server/http/upload/ffprobe"
+	"github.com/diamondburned/smolboard/server/http/upload/ff"
+	"github.com/diamondburned/smolboard/server/http/upload/imgsrv/thumbcache"
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
-
-// BufSz is the buffer size for each upload. This is 1MB.
-const BufSz = int(datasize.MB)
 
 const MaxFiles = 128
 
@@ -38,28 +36,6 @@ func (err ErrUnsupportedType) StatusCode() int {
 
 func (err ErrUnsupportedType) Error() string {
 	return "unsupported file type " + err.ContentType
-}
-
-type ErrFileTooLarge struct {
-	max int64
-	ctp string
-}
-
-func (err ErrFileTooLarge) StatusCode() int {
-	return 413
-}
-
-func (err ErrFileTooLarge) Error() string {
-	var str = fmt.Sprintf(
-		"File too large, maximum size allowed is %s",
-		datasize.ByteSize(err.max).HumanReadable(),
-	)
-
-	if err.ctp != "" {
-		str += " for type " + err.ctp
-	}
-
-	return str
 }
 
 type UploadConfig struct {
@@ -94,20 +70,50 @@ func (c *UploadConfig) Validate() error {
 	return nil
 }
 
-func (c UploadConfig) RemovePosts(posts []*smolboard.Post) (err error) {
-	for _, post := range posts {
-		path := filepath.Join(c.FileDirectory, post.Filename())
+// CleanupPost cleans up a single post asynchronously.
+func (c UploadConfig) CleanupPost(post smolboard.Post) {
+	c.CleanupPosts([]*smolboard.Post{&post})
+}
 
-		if e := os.Remove(path); e != nil {
-			err = e
+// CleanupPosts cleans up posts asynchronously.
+func (c UploadConfig) CleanupPosts(posts []*smolboard.Post) {
+	go func() {
+		for _, post := range posts {
+			if post != nil {
+				fil := post.Filename()
+				err := os.Remove(filepath.Join(c.FileDirectory, fil))
+				// Log the error if we have one and it's not a "file not found"
+				// error.
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
+					log.Printf("Failed to cleanup %q: %v", fil, err)
+				}
+
+				// Make sure the thumbnail is not cached anymore.
+				thumbcache.Delete(fil)
+			}
 		}
-	}
-	return
+	}()
 }
 
 func (c UploadConfig) CreatePosts(headers []*multipart.FileHeader) ([]*smolboard.Post, error) {
 	if len(headers) > MaxFiles {
 		return nil, ErrTooManyFiles
+	}
+
+	// Fast path: check all incoming files before starting goroutines to
+	// asynchronously download them.
+	for _, header := range headers {
+		// Fast path.
+		if header.Size > int64(c.MaxFileSize) {
+			return nil, limread.ErrFileTooLarge{Max: int64(c.MaxFileSize)}
+		}
+
+		// Fast path.
+		if ctype := header.Header.Get("Content-Type"); ctype != "" {
+			if !c.ContentTypeAllowed(ctype) {
+				return nil, ErrUnsupportedType{ctype}
+			}
+		}
 	}
 
 	var posts = make([]*smolboard.Post, len(headers))
@@ -129,6 +135,9 @@ func (c UploadConfig) CreatePosts(headers []*multipart.FileHeader) ([]*smolboard
 	}
 
 	if err := errgp.Wait(); err != nil {
+		// Clean up all downloaded files on error.
+		c.CleanupPosts(posts)
+
 		return nil, err
 	}
 
@@ -136,18 +145,6 @@ func (c UploadConfig) CreatePosts(headers []*multipart.FileHeader) ([]*smolboard
 }
 
 func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post, error) {
-	// Fast path.
-	if header.Size > int64(c.MaxFileSize) {
-		return nil, ErrFileTooLarge{max: int64(c.MaxFileSize)}
-	}
-
-	// Fast path.
-	if ctype := header.Header.Get("Content-Type"); ctype != "" {
-		if !c.ContentTypeAllowed(ctype) {
-			return nil, ErrUnsupportedType{ctype}
-		}
-	}
-
 	// Open the temporary file to read from.
 	f, err := header.Open()
 	if err != nil {
@@ -162,7 +159,7 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post,
 	}
 
 	// Create a new empty post.
-	p := db.NewEmptyPost(r.ct)
+	p := db.NewEmptyPost(r.CType)
 
 	// Download the file atomically.
 	if err := atomdl.Download(r, c.FileDirectory, &p); err != nil {
@@ -188,13 +185,13 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post,
 	} else {
 		// Failed to parse above as a normal image. Resort to shelling out, if
 		// possible.
-		s, err := ffprobe.ProbeSize(downloaded)
+		s, err := ff.ProbeSize(downloaded)
 		if err == nil {
 			p.Attributes.Width = s.Width
 			p.Attributes.Height = s.Height
 		}
 
-		i, err := ffprobe.FirstFrame(downloaded, 50, 50)
+		i, err := ff.FirstFrame(downloaded, 50, 50, ff.NeighborScaler)
 		if err == nil {
 			h, err := blurhash.Encode(4, 3, i)
 			if err == nil {
@@ -208,23 +205,23 @@ func (c UploadConfig) createPost(header *multipart.FileHeader) (*smolboard.Post,
 
 // WrapReader wraps the given reader and restrict its MIME type as well as
 // file size.
-func (c UploadConfig) WrapReader(r io.Reader) (*limitedReader, error) {
-	m, err := NewReader(r)
+func (c UploadConfig) WrapReader(r io.Reader) (*limread.LimitedReader, error) {
+	m, err := limread.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
 
-	if !c.ContentTypeAllowed(m.ctype) {
-		return nil, ErrUnsupportedType{m.ctype}
+	if !c.ContentTypeAllowed(m.ContentType()) {
+		return nil, ErrUnsupportedType{m.ContentType()}
 	}
 
 	var lim = c.MaxFileSize
-	if l := c.MaxSize.SizeLimit(m.ctype); l > 0 {
+	if l := c.MaxSize.SizeLimit(m.ContentType()); l > 0 {
 		lim = l
 	}
 
-	lr := NewLimitedReader(m, int64(lim))
-	lr.ct = m.ctype
+	lr := limread.NewLimitedReader(m, int64(lim))
+	lr.CType = m.ContentType()
 
 	return lr, nil
 }
@@ -236,77 +233,4 @@ func (c UploadConfig) ContentTypeAllowed(ctype string) bool {
 		}
 	}
 	return false
-}
-
-// Reader ensures that Read calls will read the complete stream even after
-// sniffing. Reads wrapped in Reader are inherently buffered.
-type Reader struct {
-	bufio.Reader
-	src   io.Reader
-	ctype string
-}
-
-func NewReader(r io.Reader) (*Reader, error) {
-	buf := bufio.NewReaderSize(r, BufSz)
-
-	h, err := buf.Peek(512)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to peek")
-	}
-
-	return &Reader{
-		Reader: *buf,
-		src:    r,
-		ctype:  http.DetectContentType(h),
-	}, nil
-}
-
-func (r *Reader) ContentType() string {
-	return r.ctype
-}
-
-type limitedReader struct {
-	rd io.LimitedReader
-	wt io.WriterTo
-	mx int64
-	ct string // internal only
-}
-
-type LimitedReaderer interface {
-	io.Reader
-	io.WriterTo
-}
-
-var (
-	_ LimitedReaderer = (*bufio.Reader)(nil)
-	_ LimitedReaderer = (*limitedReader)(nil)
-)
-
-func NewLimitedReader(r LimitedReaderer, max int64) *limitedReader {
-	return &limitedReader{
-		rd: io.LimitedReader{R: r, N: max + 1},
-		wt: r,
-		mx: max,
-	}
-}
-
-func (r *limitedReader) Read(b []byte) (int, error) {
-	n, err := r.rd.Read(b)
-
-	if r.rd.N <= 0 {
-		return n, ErrFileTooLarge{max: r.mx, ctp: r.ct}
-	}
-
-	return n, err
-}
-
-func (r *limitedReader) WriteTo(w io.Writer) (int64, error) {
-	n, err := r.wt.WriteTo(w)
-	r.rd.N -= n
-
-	if r.rd.N <= 0 {
-		return n, ErrFileTooLarge{max: r.mx, ctp: r.ct}
-	}
-
-	return n, err
 }

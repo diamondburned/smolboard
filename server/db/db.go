@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
+	"runtime/debug"
 	"time"
 
 	"github.com/diamondburned/duration"
@@ -216,6 +218,7 @@ type Transaction struct {
 func (d *Database) begin(ctx context.Context, session string) (*Transaction, error) {
 	t, err := d.DB.BeginTxx(ctx, nil)
 	if err != nil {
+		log.Println("Failed to acquire.", string(debug.Stack()))
 		return nil, err
 	}
 
@@ -258,6 +261,7 @@ var readOnlyOpts = &sql.TxOptions{
 func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {
 	t, err := d.DB.BeginTxx(ctx, readOnlyOpts)
 	if err != nil {
+		log.Println("Failed to acquire Guest.", string(debug.Stack()))
 		return errors.Wrap(err, "Failed to begin transaction")
 	}
 	defer t.Rollback()

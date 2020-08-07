@@ -141,9 +141,12 @@ func NewSocketClientFromRequest(socket string, r *http.Request) (*Client, error)
 	}
 
 	c.ctx = r.Context()
-	c.SetCookies(r.Cookies())
 	c.SetUserAgent(r.UserAgent())
 	c.SetRemoteAddr(r.RemoteAddr)
+
+	if t, err := r.Cookie("token"); err == nil {
+		c.SetCookies([]*http.Cookie{t})
+	}
 
 	if f := r.Header.Get("X-Forwarded-For"); f != "" {
 		c.SetRemoteAddr(f)

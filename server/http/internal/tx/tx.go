@@ -17,8 +17,9 @@ import (
 type Request struct {
 	*http.Request
 	wr http.ResponseWriter
-	Up upload.UploadConfig
-	Tx db.Transaction
+
+	Up *upload.UploadConfig
+	Tx *db.Transaction
 }
 
 // Param is a helper function that returns a URL parameter from chi.
@@ -29,28 +30,13 @@ func (r Request) Param(s string) string {
 // SetSession sets the written token cookie to the given session. The given
 // session can be nil.
 func (r *Request) SetSession(s *smolboard.Session) {
+	log.Println("Setting session to", s)
+
 	if s != nil {
 		r.Tx.Session = *s
 	} else {
 		r.Tx.Session = smolboard.Session{}
 	}
-
-	// Trim the port if needed.
-	var host = r.Host
-	// Trick the URL parser into thinking this is a valid URL by prepending a
-	// valid scheme.
-	if u, err := url.Parse("https://" + host); err == nil {
-		host = u.Hostname()
-	}
-
-	http.SetCookie(r.wr, &http.Cookie{
-		Name:     "token",
-		Value:    r.Tx.Session.AuthToken,
-		Path:     "/",
-		Domain:   host,
-		Expires:  time.Unix(0, r.Tx.Session.Deadline),
-		SameSite: http.SameSiteStrictMode,
-	})
 }
 
 // Handler is the function signature for transaction handlers. Render could be
@@ -87,10 +73,12 @@ func (m Middleware) M(h Handler) http.HandlerFunc {
 
 func (m Middleware) noAuth(h Handler, w http.ResponseWriter, r *http.Request) {
 	var v interface{}
+	var s smolboard.Session
 
 	err := m.db.AcquireGuest(r.Context(),
 		func(tx *db.Transaction) (err error) {
-			v, err = h(Request{r, w, m.up, *tx})
+			v, err = h(Request{r, w, &m.up, tx})
+			s = tx.Session
 			return
 		},
 	)
@@ -98,32 +86,40 @@ func (m Middleware) noAuth(h Handler, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		RenderError(w, err)
 		return
+	}
+
+	// If we have a new session, then send it over.
+	if !s.IsZero() {
+		// Trim the port if needed.
+		var host = r.Host
+		// Trick the URL parser into thinking this is a valid URL by prepending a
+		// valid scheme.
+		if u, err := url.Parse("https://" + host); err == nil {
+			host = u.Hostname()
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "token",
+			Value:    s.AuthToken,
+			Path:     "/",
+			Domain:   host,
+			Expires:  time.Unix(0, s.Deadline),
+			SameSite: http.SameSiteStrictMode,
+		})
 	}
 
 	render(w, v)
 }
 
 func (m Middleware) auth(h Handler, c *http.Cookie, w http.ResponseWriter, r *http.Request) {
-	// Check cookies for the session.
-	c, err := r.Cookie("token")
-	if err != nil {
-		RenderWrap(w, err, 403, "Missing token cookie")
-		return
-	}
-
 	var v interface{}
-	var e int64 // new expiry
+	var s smolboard.Session
 
-	err = m.db.Acquire(r.Context(), c.Value,
+	err := m.db.Acquire(r.Context(), c.Value,
 		func(tx *db.Transaction) (err error) {
-			// Update the cookie's expiry date. If this is the guest session,
-			// then the expiry would be 0. As such, we'll check later and not
-			// set the cookie if so.
-			e = tx.Session.Deadline
-
 			// Call the given handler with the transaction.
-			v, err = h(Request{r, w, m.up, *tx})
-
+			v, err = h(Request{r, w, &m.up, tx})
+			s = tx.Session
 			return
 		},
 	)
@@ -133,8 +129,13 @@ func (m Middleware) auth(h Handler, c *http.Cookie, w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Save the cookie if the expiry time is valid.
-	if e > 0 {
+	// If the cookie has been changed, then override the cookie's fields to
+	// default and send it over.
+	if c.Expires.UnixNano() != s.Deadline || c.Value != s.AuthToken {
+		c.Path = "/"
+		c.Value = s.AuthToken
+		c.Expires = time.Unix(0, s.Deadline)
+		c.SameSite = http.SameSiteStrictMode
 		http.SetCookie(w, c)
 	}
 

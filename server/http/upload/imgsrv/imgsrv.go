@@ -2,7 +2,9 @@ package imgsrv
 
 import (
 	"bytes"
-	"image/png"
+	"image"
+	"image/draw"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -10,32 +12,40 @@ import (
 	"strconv"
 
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
-	"github.com/diamondburned/smolboard/server/http/internal/middleware"
 	"github.com/diamondburned/smolboard/server/http/internal/tx"
+	"github.com/diamondburned/smolboard/server/http/upload/ff"
+	"github.com/diamondburned/smolboard/server/http/upload/imgsrv/thumbcache"
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/disintegration/imaging"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/pixiv/go-libjpeg/jpeg"
 	"github.com/pkg/errors"
 )
 
 // ThumbnailSize controls the dimension of the thumbnail.
-const ThumbnailSize = 500
+const ThumbnailSize = 400
 
 var (
 	ErrFileNotFound = httperr.New(404, "file not found")
 )
 
-var thumbThrottler = middleware.Throttle(128)
+// limit the thumbnail processors to 50 simultaneous requests.
+var thumbThrottler = middleware.Throttle(50)
 
 func Mount(m tx.Middlewarer) http.Handler {
 	mux := chi.NewMux()
-	mux.Use(limit.RateLimit(128)) // 128 accesses per second
+	mux.Use(limit.RateLimit(100)) // 100 accesses per second
 
 	// Parse the filename for the post ID.
 	mux.With(parseID).Route("/{file}", func(r chi.Router) {
 		r.Get("/", m(ServePost))
+
 		// Throttle to 128 simultaneous thumbnail renders a second.
-		r.With(thumbThrottler).Get("/thumb", m(ServeThumbnail))
+		r.With(thumbThrottler).Group(func(r chi.Router) {
+			r.Get("/thumb.jpeg", m(ServeThumbnail))
+			r.Get("/thumb.jpg", m(ServeThumbnail))
+		})
 	})
 
 	return mux
@@ -82,12 +92,6 @@ func ServePost(r tx.Request) (interface{}, error) {
 	}, nil
 }
 
-var encopts = []imaging.EncodeOption{
-	imaging.JPEGQuality(98),
-	// HTTP already compresses, so we save CPU.
-	imaging.PNGCompressionLevel(png.DefaultCompression),
-}
-
 func ServeThumbnail(r tx.Request) (interface{}, error) {
 	id, _ := getStored(r)
 
@@ -97,9 +101,13 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 	}
 
 	return func(w http.ResponseWriter) error {
+		var name = p.Filename()
+
 		// Try serving the thumbnail and redirect the user to the original
 		// content if there's none available.
-		if !serveThumbnail(w, r, p.Filename()) {
+		if err := serveThumbnail(w, r, name); err != nil {
+			log.Printf("Error serving thumbnail %q: %v\n", name, err)
+
 			redirect := path.Dir(r.URL.Path) // remove /thumb
 			http.Redirect(w, r.Request, redirect, http.StatusPermanentRedirect)
 		}
@@ -109,46 +117,87 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 	}, nil
 }
 
-func serveThumbnail(w http.ResponseWriter, r tx.Request, name string) bool {
-	t, err := imaging.FormatFromFilename(name)
+var jpegOpts = &jpeg.EncoderOptions{
+	Quality:        95,
+	OptimizeCoding: true,
+	DCTMethod:      jpeg.DCTMethod(jpeg.DCTFloat),
+}
+
+func serveThumbnail(w http.ResponseWriter, r tx.Request, name string) error {
+	var path = filepath.Join(r.Up.FileDirectory, name)
+
+	// We should always check if the file still exists. It may not.
+	s, err := os.Stat(path)
 	if err != nil {
-		return false
+		// Cleanup if any. This isn't important, so we can ignore.
+		thumbcache.Delete(name)
+
+		return errors.Wrap(err, "Failed to stat file")
 	}
 
-	f, err := os.Open(filepath.Join(r.Up.FileDirectory, name))
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	s, err := f.Stat()
-	if err != nil {
-		return false
-	}
-
-	i, err := imaging.Decode(f, imaging.AutoOrientation(true))
-	if err != nil {
-		return false
-	}
-
-	// Early close.
-	f.Close()
-
-	var img = imaging.Fit(i, ThumbnailSize, ThumbnailSize, imaging.Lanczos)
-	var buf bytes.Buffer
-
-	if err := imaging.Encode(&buf, img, t, encopts...); err != nil {
-		return false
-	}
+	var modTime = s.ModTime()
 
 	// Before serving the content, we could use the ModTime as the ETag for
 	// caching validation.
-	var modTime = s.ModTime()
 	w.Header().Set("ETag", strconv.FormatInt(modTime.UnixNano(), 16))
 
 	// Set up caching. Max age is 7 days.
 	w.Header().Set("Cache-Control", "private, max-age=604800")
 
-	http.ServeContent(w, r.Request, name, modTime, bytes.NewReader(buf.Bytes()))
-	return true
+	// Check if the file is in the cache. If it is, return.
+	b, err := thumbcache.Get(name)
+	if err == nil {
+		http.ServeContent(w, r.Request, "thumb.jpeg", modTime, bytes.NewReader(b))
+		return nil
+	}
+
+	b, err = tryNativeJPEG(r, path)
+	if err != nil {
+		b, err = tryFFmpeg(r, path)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// Non-fatal cache error; ignore.
+	if err := thumbcache.Put(name, b); err != nil {
+		log.Println("Failed to cache thumbnail:", err)
+	}
+
+	http.ServeContent(w, r.Request, "thumb.jpeg", modTime, bytes.NewReader(b))
+	return nil
+}
+
+func tryFFmpeg(r tx.Request, path string) ([]byte, error) {
+	return ff.FirstFrameJPEG(path, ThumbnailSize, ThumbnailSize, ff.LanczosScaler)
+}
+
+func tryNativeJPEG(r tx.Request, path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to open file")
+	}
+	defer f.Close()
+
+	i, err := imaging.Decode(f, imaging.AutoOrientation(true))
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to decode image")
+	}
+
+	// Early close.
+	f.Close()
+
+	nrgba := imaging.Fit(i, ThumbnailSize, ThumbnailSize, imaging.Lanczos)
+	// Since JPEG really wants an *RGBA, we need to redraw everything.
+	rgba := image.NewRGBA(nrgba.Rect)
+	draw.Draw(rgba, rgba.Rect, nrgba, rgba.Rect.Min, draw.Src)
+
+	var buf bytes.Buffer
+
+	if err := jpeg.Encode(&buf, rgba, jpegOpts); err != nil {
+		return nil, errors.Wrap(err, "Failed to encode JPEG")
+	}
+
+	return buf.Bytes(), nil
 }

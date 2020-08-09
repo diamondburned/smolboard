@@ -18,3 +18,43 @@
 .settings form.actions button {
     text-align: start;
 }
+
+.settings div.admin-settings {
+	display: flex;
+	align-items: center;
+}
+
+.settings div.admin-settings legend {
+    flex: 1;
+}
+
+.settings div.user-settings {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+}
+
+.settings div.user-settings form.change-password {
+	flex: 1;
+
+    display: flex;
+    align-items: center;
+}
+
+.settings div.user-settings form.change-password > label,
+.settings div.user-settings form.change-password > button {
+	white-space: nowrap;
+}
+
+.settings div.user-settings form.change-password > input {
+	flex: 1;
+}
+
+.settings div.user-settings form.change-password > .small {
+	margin: 0 var(--universal-margin);
+    padding: calc(0.5 * var(--universal-padding)) calc(0.75 * var(--universal-padding));
+}
+
+.settings div.user-settings form.change-password > .small:last-child {
+	margin-left: 0;
+}

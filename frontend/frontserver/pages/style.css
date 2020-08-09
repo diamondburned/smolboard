@@ -49,7 +49,7 @@ aside {
 }
 
 main.single {
-	margin: auto;
+	margin:  0 auto;
 	width:     100%;
 	max-width: 800px;
 }
@@ -73,18 +73,25 @@ aside > * a[role="button"].small {
 	padding: calc(0.5 * var(--universal-padding)) calc(1.5 * var(--universal-padding));
 }
 
-aside .sensitive {
-	transition: linear 80ms opacity;
+.sensitive {
+	transition: linear 80ms !important;
 	opacity: 0.35;
 }
-aside .sensitive:hover {
+.sensitive:hover {
 	opacity: 1;
 }
 
-aside              span[class^="icon-"],
-div[role="dialog"] span[class^="icon-"] {
+aside                span[class^="icon-"],
+div[role="dialog"]   span[class^="icon-"],
+label[role="button"] span[class^="icon-"] {
 	width:  1em;
 	margin: 0 var(--universal-margin);
+}
+
+aside                span:last-child,
+div[role="dialog"]   span:last-child,
+label[role="button"] span:last-child {
+	margin-right: var(--universal-margin);
 }
 
 aside form {

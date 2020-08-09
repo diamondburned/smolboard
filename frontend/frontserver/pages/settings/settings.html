@@ -17,7 +17,7 @@
 			{{ end }}
 
 			<div class="user-settings">
-				<legend>User {{ .Current.Username }}</legend>
+				<legend>User</legend>
 
 				<form class="change-password seamless"
 					  action="users/@me/change-password" method="post"
@@ -26,10 +26,11 @@
 					<input type="password" id="chpassword" class="small" name="password">
 					<button type="submit" class="small">
 						<span class="icon-lock"></span>
+						<span>Apply</span>
 					</button>
 				</form>
 
-				<label role="button" for="delete-confirm" class="small secondary">
+				<label role="button" for="delete-confirm" class="sensitive small secondary">
 					<span class="icon-alert secondary inverse"></span>
 					<span>Delete Account</span>
 				</label>
@@ -130,7 +131,7 @@
 							<form class="actions section seamless">
 								<legend>Actions</legend>
 
-								<button type="submit" class="delete-session secondary"
+								<button type="submit" class="delete-session small secondary"
 										formmethod="post"
 										formaction="sessions/{{$session.ID}}/delete"
 								>

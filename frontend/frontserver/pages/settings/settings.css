@@ -1,0 +1,20 @@
+.settings .session-list h3 {
+	margin: calc(2 * var(--universal-margin));
+	margin-bottom: 0;
+}
+
+.settings .session-list .table {
+	padding: var(--universal-padding) calc(2 * var(--universal-padding));
+}
+
+.settings #delete-confirm + div form.buttons {
+	justify-content: flex-end;
+}
+
+.settings #delete-confirm + div form.buttons label {
+	margin-right: 0;
+}
+
+.settings form.actions button {
+    text-align: start;
+}

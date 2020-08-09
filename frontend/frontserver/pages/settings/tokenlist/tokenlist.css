@@ -1,0 +1,50 @@
+main.tokens > div.header {
+	display: flex;
+	flex-flow: row wrap;
+	justify-content: space-between;
+}
+
+main.tokens > div.header h3 {
+	margin: auto calc(2 * var(--universal-margin));
+}
+
+p.no-token-msg {
+    color: var(--secondary-fore-color);
+}
+
+form.add-token {
+	display: flex;
+    flex-direction: row;
+}
+
+form.add-token input.small {
+    margin: 0;
+    margin-left: var(--universal-margin);
+}
+
+form.add-token p.info {
+	margin: auto;
+	white-space: nowrap;
+}
+
+form.add-token p.info span.range {
+    color: var(--secondary-fore-color);
+	font-size: small;
+}
+
+form.add-token .form-group {
+	display: flex;
+	justify-content: flex-end;
+}
+
+div.token-list {
+	margin-top: var(--universal-margin);
+}
+
+div.token-list div[role="dialog"] h3 {
+	padding: calc(2 * var(--universal-padding));
+}
+
+div.token-list .token-actions button {
+    text-align: start;
+

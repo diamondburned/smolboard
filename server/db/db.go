@@ -17,6 +17,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// TODO: add avatar URL (host whitelisted)
+// TODO: add tokens creation time
+
 var migrations = []string{`
 	CREATE TABLE users (
 		username   TEXT    PRIMARY KEY,

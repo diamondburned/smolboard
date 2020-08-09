@@ -2,6 +2,7 @@ package user
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/diamondburned/smolboard/server/http/internal/form"
 	"github.com/diamondburned/smolboard/server/http/internal/limit"
@@ -15,28 +16,104 @@ import (
 func Mount(m tx.Middlewarer) http.Handler {
 	mux := chi.NewMux()
 	mux.Use(limit.RateLimit(32))
+
+	mux.Get("/", m(GetUsers))
+
 	mux.Route("/{username}", func(r chi.Router) {
 		r.Get("/", m(GetUser))
+		r.Patch("/", m(PatchUser)) // only @me
 		r.Delete("/", m(DeleteUser))
 
 		r.Route("/permission", func(r chi.Router) {
 			r.Patch("/", m(PromoteUser))
+		})
+
+		r.Route("/sessions", func(r chi.Router) {
+			r.Get("/", m(GetSessions))
+			r.Delete("/", m(DeleteAllSessions))
+			r.Delete("/{sessionID}", m(DeleteSession))
 		})
 	})
 
 	return mux
 }
 
-func GetUser(r tx.Request) (interface{}, error) {
+func username(r tx.Request) string {
 	var username = r.Param("username")
 	if username == "@me" {
-		return r.Tx.Me()
+		return r.Tx.Session.Username
 	}
-	return r.Tx.User(username)
+	return username
+}
+
+type UsersParams struct {
+	Count uint `schema:"c"`
+	Page  uint `schema:"p"`
+}
+
+func GetUsers(r tx.Request) (interface{}, error) {
+	var p UsersParams
+
+	if err := form.Unmarshal(r, &p); err != nil {
+		return nil, errors.Wrap(err, "Invalid form")
+	}
+
+	return r.Tx.Users(p.Count, p.Page)
+}
+
+func GetUser(r tx.Request) (interface{}, error) {
+	return r.Tx.User(username(r))
+}
+
+type PatchQuery struct {
+	Password string `schema:"password"`
+}
+
+func PatchUser(r tx.Request) (interface{}, error) {
+	// Only allow @me.
+	if username(r) != r.Tx.Session.Username {
+		return nil, smolboard.ErrActionNotPermitted
+	}
+
+	var q PatchQuery
+
+	if err := form.Unmarshal(r, &q); err != nil {
+		return nil, httperr.Wrap(err, 400, "Invalid form")
+	}
+
+	if q.Password != "" {
+		if err := r.Tx.ChangePassword(q.Password); err != nil {
+			return nil, errors.Wrap(err, "Failed to change password")
+		}
+	}
+
+	u, err := r.Tx.Me()
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to get current user after changes")
+	}
+
+	return u, nil
 }
 
 func DeleteUser(r tx.Request) (interface{}, error) {
-	return nil, r.Tx.DeleteUser(r.Param("username"))
+	return nil, r.Tx.DeleteUser(username(r))
+}
+
+func GetSessions(r tx.Request) (interface{}, error) {
+	return r.Tx.Sessions()
+}
+
+func DeleteSession(r tx.Request) (interface{}, error) {
+	i, err := strconv.ParseInt(r.Param("sessionID"), 10, 64)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to parse session ID")
+	}
+
+	return nil, r.Tx.DeleteSessionID(i)
+}
+
+func DeleteAllSessions(r tx.Request) (interface{}, error) {
+	return nil, r.Tx.DeleteAllSessions()
 }
 
 type Promote struct {
@@ -50,7 +127,7 @@ func PromoteUser(r tx.Request) (interface{}, error) {
 		return nil, httperr.Wrap(err, 400, "Invalid form")
 	}
 
-	return nil, r.Tx.PromoteUser(r.Param("username"), p.Permission)
+	return nil, r.Tx.PromoteUser(username(r), p.Permission)
 }
 
 type Authentication struct {

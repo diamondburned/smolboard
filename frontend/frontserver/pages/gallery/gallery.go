@@ -37,13 +37,6 @@ var tmpl = render.BuildPage("home", render.Page{
 		"isImage": func(ctype string) bool { return genericMIME(ctype) == "image" },
 		"isVideo": func(ctype string) bool { return genericMIME(ctype) == "video" },
 
-		"negInf": func(i int) string {
-			if i == -1 {
-				return "∞"
-			}
-			return strconv.Itoa(i)
-		},
-
 		"numPages": func(max int) int {
 			return int(math.Ceil(float64(max) / PageSize))
 		},
@@ -63,9 +56,6 @@ func genericMIME(mime string) string {
 type renderCtx struct {
 	render.CommonCtx
 	smolboard.SearchResults
-
-	// Tokens is non-nil if IsAdmin returns true.
-	smolboard.TokenList
 
 	Query string // ?q=X
 	Page  int    // ?p=X
@@ -113,26 +103,6 @@ func (r renderCtx) InlineImage(p smolboard.Post) interface{} {
 	return r.Session.PostThumbURL(p)
 }
 
-// IsAdmin returns true if the current user is an admin.
-func (r renderCtx) IsAdmin() bool {
-	return true &&
-		r.User != nil &&
-		r.User.Username == r.Username &&
-		r.User.Permission >= smolboard.PermissionAdministrator
-}
-
-func (r renderCtx) MinTokenUses() int {
-	if !r.IsAdmin() {
-		return 0
-	}
-
-	if r.User.Permission == smolboard.PermissionOwner {
-		return -1
-	}
-
-	return 1
-}
-
 func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(pageRender))
@@ -168,14 +138,6 @@ func pageRender(r *render.Request) (render.Render, error) {
 
 		Page:  page,
 		Query: query,
-	}
-
-	if renderCtx.IsAdmin() {
-		t, err := r.Session.ListTokens()
-		if err != nil {
-			return render.Empty, errors.Wrap(err, "Failed to get tokens")
-		}
-		renderCtx.TokenList = t
 	}
 
 	return render.Render{

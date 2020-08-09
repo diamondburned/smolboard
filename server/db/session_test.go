@@ -136,6 +136,35 @@ func TestSessionSignout(t *testing.T) {
 	}
 }
 
+func TestSessionDeleteAll(t *testing.T) {
+	d := newTestDatabase(t)
+
+	owner := testNewOwner(t, d, "ひめありかわ", "goodpassword")
+
+	var s *smolboard.Session
+	err := d.AcquireGuest(context.TODO(), func(tx *Transaction) (err error) {
+		s, err = tx.Signin(owner.Username, "goodpassword", "")
+		return err
+	})
+	if err != nil {
+		t.Fatal("Failed to make a second session:", err)
+	}
+
+	tx := testBeginTx(t, d, owner.AuthToken)
+
+	if err := tx.DeleteAllSessions(); err != nil {
+		t.Fatal("Failed to delete all sessions:", err)
+	}
+
+	if _, err := tx.querySession(s.AuthToken); !errors.Is(err, smolboard.ErrSessionExpired) {
+		t.Fatal("Unexpected error querying deleted session:", err)
+	}
+
+	if err := tx.Signout(); err != nil {
+		t.Fatal("Failed to sign out:", err)
+	}
+}
+
 func TestSessionExpiry(t *testing.T) {
 	d := newTestDatabase(t)
 	d.Config.tokenLifespan = 200 * time.Millisecond

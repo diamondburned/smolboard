@@ -58,8 +58,39 @@ func (s *Session) Me() (u smolboard.UserPart, err error) {
 	return u, s.Client.Get("/users/@me", &u, nil)
 }
 
+type UserEditParams struct {
+	Password string
+}
+
+func (s *Session) EditMe(pp UserEditParams) (u smolboard.UserPart, err error) {
+	return u, s.Client.Request("PATCH", "/users/@me", &u, url.Values{
+		"password": {pp.Password},
+	})
+}
+
+func (s *Session) DeleteMe() error {
+	return s.Client.Delete("/users/@me", nil, nil)
+}
+
 func (s *Session) User(username string) (u smolboard.UserPart, err error) {
 	return u, s.Client.Get("/users/"+url.PathEscape(username), &u, nil)
+}
+
+// Users gets a paginated list of users. The default value for count is 50. This
+// endpoint is only allowed for the owner and admins.
+func (s *Session) Users(count, page int) (u []smolboard.UserPart, err error) {
+	if count == 0 {
+		count = 50
+	}
+
+	return u, s.Client.Get("/users", &u, url.Values{
+		"c": {strconv.Itoa(count)},
+		"p": {strconv.Itoa(page)},
+	})
+}
+
+func (s *Session) DeleteUser(username string) error {
+	return s.Client.Delete("/users/"+url.PathEscape(username), nil, nil)
 }
 
 func (s *Session) Post(id int64) (p smolboard.PostExtended, err error) {
@@ -144,4 +175,16 @@ func (s *Session) CreateToken(uses int) (t smolboard.Token, err error) {
 
 func (s *Session) DeleteToken(token string) error {
 	return s.Client.Delete("/tokens/"+token, nil, nil)
+}
+
+func (s *Session) GetSessions() (ses []smolboard.Session, err error) {
+	return ses, s.Client.Get("/users/@me/sessions", &ses, nil)
+}
+
+func (s *Session) DeleteSession(id int64) error {
+	return s.Client.Delete(fmt.Sprintf("/users/@me/sessions/%d", id), nil, nil)
+}
+
+func (s *Session) DeleteAllSessions() error {
+	return s.Client.Delete("/users/@me/sessions", nil, nil)
 }

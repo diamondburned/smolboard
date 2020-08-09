@@ -117,9 +117,18 @@ func DeletePost(r tx.Request) (interface{}, error) {
 		return nil, smolboard.ErrPostNotFound
 	}
 
-	panic("Implement delete from FS and cache")
+	p, err := r.Tx.Post(i)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to query post")
+	}
 
-	return nil, r.Tx.DeletePost(i)
+	if err := r.Tx.DeletePost(p.ID); err != nil {
+		return nil, errors.Wrap(err, "Failed to delete post")
+	}
+
+	r.Up.CleanupPost(p.Post)
+
+	return nil, nil
 }
 
 type PostPermission struct {

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/diamondburned/smolboard/smolboard"
@@ -18,6 +19,7 @@ func TestUser(t *testing.T) {
 		}
 	})
 
+	var owner *smolboard.Session
 	var ownerToken string
 
 	t.Run("VerifyPassword", func(t *testing.T) {
@@ -29,6 +31,7 @@ func TestUser(t *testing.T) {
 		if err != nil {
 			t.Fatal("Failed to sign in:", err)
 		}
+		owner = k
 		ownerToken = k.AuthToken
 	})
 
@@ -92,6 +95,20 @@ func TestUser(t *testing.T) {
 			token = k.AuthToken
 		})
 
+		// owner test
+		t.Run("List", func(t *testing.T) {
+			tx := testBeginTx(t, d, ownerToken)
+
+			u, err := tx.Users(100, 0)
+			if err != nil {
+				t.Fatal("Failed to get users:", err)
+			}
+
+			if len(u) != 2 {
+				t.Fatalf("Invalid users slice: %#v", u)
+			}
+		})
+
 		t.Run("Promote", func(t *testing.T) {
 			tx := testBeginTx(t, d, ownerToken)
 
@@ -150,6 +167,62 @@ func TestUser(t *testing.T) {
 
 		if _, err := tx.User("invalid user"); !errors.Is(err, smolboard.ErrUserNotFound) {
 			t.Fatal("Unexpected error getting illegal named user:", err)
+		}
+	})
+
+	t.Run("ChangePassword", func(t *testing.T) {
+		err := d.AcquireGuest(context.TODO(), func(tx *Transaction) error {
+			_, err := tx.Signin(d.Config.Owner, "goodpassword", "")
+			return err
+		})
+		if err != nil {
+			t.Fatal("Failed to create a second session")
+		}
+
+		err = d.Acquire(context.TODO(), ownerToken, func(tx *Transaction) error {
+			return tx.ChangePassword("otokonoko")
+		})
+		if err != nil {
+			t.Fatal("Failed to change password:", err)
+		}
+
+		// Reacquire the sesssion with the same token. This should work.
+		err = d.Acquire(context.TODO(), ownerToken, func(tx *Transaction) error {
+			s, err := tx.Sessions()
+			if err != nil {
+				return errors.Wrap(err, "Failed to get sessions")
+			}
+
+			if len(s) != 1 {
+				return fmt.Errorf("Unexpected sessions count: %d != 1", len(s))
+			}
+
+			if s[0].ID != owner.ID {
+				return fmt.Errorf("Unexpected sessions returned: %#v", s)
+			}
+
+			return nil
+		})
+		if err != nil {
+			t.Fatal("Failed to finish testing after password deletion:", err)
+		}
+
+		err = d.AcquireGuest(context.TODO(), func(tx *Transaction) error {
+			// use the old passwrod
+			_, err := tx.Signin(d.Config.Owner, "goodpassword", "")
+			return err
+		})
+		if !errors.Is(err, smolboard.ErrInvalidPassword) {
+			t.Fatal("Unexpected error using old password:", err)
+		}
+
+		err = d.AcquireGuest(context.TODO(), func(tx *Transaction) error {
+			// use the new password
+			_, err := tx.Signin(d.Config.Owner, "otokonoko", "")
+			return err
+		})
+		if err != nil {
+			t.Fatal("Unexpected error using new password:", err)
 		}
 	})
 

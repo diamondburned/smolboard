@@ -1,0 +1,74 @@
+<body class="tokens">
+	<div class="tokens">
+		{{ template "nav" . }}
+
+		<main class="tokens single">
+			<div class="header">
+				<h3>Invite Tokens</h3>
+
+				<form class="add-token seamless" action="" method="post">
+					{{ $min := .MinTokenUses }}
+
+					<p class="info">
+						<span>Create Token</span>
+						<span class="range">from {{ $min }} to {{ .MaxUses }}</span>
+					</p>
+
+					<div class="form-group">
+						<input type="number" class="small" name="uses"
+							   value="1" min="{{ $min }}" max="{{ .MaxUses }}">
+						<input type="submit" class="small" value="＋">
+					</div>
+				</form>
+			</div>
+
+			<div class="token-list">
+				{{ range $index, $token := .Tokens }}
+				<div class="token">
+					<label for="token-{{$index}}" class="dialog-button">
+						<div id="left">
+							<span id="creator">{{ $token.Creator }}</span>
+							<span id="permission">
+								{{ printf "(%s)" (index $.Creators $token.Creator).Permission }}
+							</span>
+						</div>
+
+						<div id="right">
+							<span id="remaining">{{ negInf $token.Remaining }}</span>
+							<span>uses</span>
+						</div>
+					</label>
+				
+					<input type="checkbox" id="token-{{$index}}" class="modal">
+					<div role="dialog">
+						<div class="card">
+							<label for="token-{{$index}}" class="modal-close"></label>
+				
+							<h3 class="section">
+								<small>Invite Token</small>
+								{{ $token.Token }}
+							</h3>
+				
+							<form class="section token-actions seamless">
+								<legend>Actions</legend>
+				
+								<button type="submit" class="delete-token secondary"
+										formmethod="post"
+										formaction="{{$token.Token}}/delete"
+								>
+									<span class="icon-alert secondary inverse"></span>
+									<span>Delete Token</span>
+								</button>
+							</form>
+						</div>
+					</div>
+				</div>
+				{{ else }}
+				<p class="no-token-msg">No tokens.</p>
+				{{ end }}
+			</div>
+		</main>
+	</div>
+
+	{{ template "footer" }}
+</body>

@@ -79,9 +79,11 @@
 						<span id="poster">{{ .Poster }}</span>
 	
 						<span>Date</span>
-						<time datetime="{{ htmlTime .CreatedTime }}" id="created-time">
-							{{ humanizeTime .CreatedTime }}
+						{{ with .CreatedTime }}
+						<time datetime="{{ htmlTime . }}" id="created-time">
+							{{ humanizeTime . }}
 						</time>
+						{{ end }}
 	
 						<span>Permission</span>
 						<span id="permission">{{ .Permission }}</span>
@@ -120,7 +122,7 @@
 				{{ end }}
 			</aside>
 	
-			<main>
+			<main class="post">
 				{{ with .Post }}
 	
 				{{ if (isImage .ContentType) }}
@@ -133,7 +135,7 @@
 	
 				{{ else }}
 				<div>
-					<p><span class=".icon-link"></span></p>
+					<p><span class="icon-link"></span></p>
 					<p>{{ .ContentType }}</p>
 				</div>
 	

@@ -105,7 +105,7 @@ body.post-page {
 }
 
 .post main > * {
-	width:  auto;
+	/* width:  auto; */
 	height: auto;
 
 	max-width:  100%;

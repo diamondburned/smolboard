@@ -48,7 +48,14 @@ aside {
 	max-width: 325px;
 }
 
-aside > * {
+main.single {
+	margin: auto;
+	width:     100%;
+	max-width: 800px;
+}
+
+aside > *,
+main.single > * {
 	background: var(--form-back-color);
 	color: var(--form-fore-color);
 
@@ -74,7 +81,8 @@ aside .sensitive:hover {
 	opacity: 1;
 }
 
-aside span[class^="icon-"] {
+aside              span[class^="icon-"],
+div[role="dialog"] span[class^="icon-"] {
 	width:  1em;
 	margin: 0 var(--universal-margin);
 }
@@ -84,6 +92,7 @@ aside form {
 	flex-direction: column;
 }
 
+main.single legend,
 aside > * p,
 aside > * legend,
 aside form .tag,
@@ -96,13 +105,15 @@ aside > * legend {
 	margin-bottom: calc(var(--universal-margin) / 2);
 }
 
-aside div.table {
+div div.table {
 	display: grid;
 	grid-column-gap: var(--universal-margin);
 	grid-template-columns: auto 1fr;
+
+	margin: 0 var(--universal-margin);
 }
 
-aside div.table span:nth-child(odd) {
+div div.table span:nth-child(odd) {
 	color: var(--secondary-fore-color);
 	text-align: right;
 }
@@ -112,7 +123,7 @@ aside div.table span:nth-child(odd) {
 		flex-direction: column-reverse;
 		justify-content: flex-end;
 	}
-	main:not(.error) {
+	main.posts, main.post {
 		margin-left:   var(--universal-margin) !important;
 		margin-bottom: 0 !important;
 	}
@@ -123,6 +134,35 @@ aside div.table span:nth-child(odd) {
 		/* stretch all the way */
 		max-width: none !important;
 	}
+}
+
+form.section.seamless > legend {
+    padding: 0 var(--universal-margin);
+}
+
+form.section.seamless {
+    display: flex;
+    flex-direction: column;
+}
+
+label.dialog-button {
+	display: flex;
+	flex-flow: row wrap;
+	justify-content: space-between;
+
+	margin: calc(var(--universal-margin) / 2) 0;
+	padding: var(--universal-padding) calc(2 * var(--universal-padding));
+
+	border-radius: var(--universal-border-radius);
+	transition: background-color 0.3s;
+}
+
+label.dialog-button:hover {
+    background-color: var(--button-hover-back-color);
+}
+
+label.dialog-button > *:first-child {
+    margin-right: var(--universal-margin);
 }
 
 *::-webkit-scrollbar,

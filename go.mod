@@ -23,6 +23,7 @@ require (
 	github.com/markbates/pkger v0.17.0
 	github.com/mattn/go-shellwords v1.0.10
 	github.com/mattn/go-sqlite3 v1.14.0
+	github.com/mileusna/useragent v1.0.1
 	github.com/pelletier/go-toml v1.8.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible
 	github.com/pixiv/go-libjpeg v0.0.0-20190822045933-3da21a74767d

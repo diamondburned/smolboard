@@ -33,28 +33,41 @@ func (d *Transaction) ListTokens() (*smolboard.TokenList, error) {
 			d.Session.Username,
 		)
 	}
-
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to query tokens")
 	}
-
 	defer q.Close()
 
 	var tokens []smolboard.Token
-
 	for q.Next() {
 		var token smolboard.Token
-
 		if err := q.StructScan(&token); err != nil {
 			return nil, errors.Wrap(err, "Failed to scan token")
 		}
-
 		tokens = append(tokens, token)
 	}
 
+	// Filter out a map of creators for easy lookup.
+	var creators = map[string]smolboard.UserPart{}
+
+	for _, t := range tokens {
+		if _, ok := creators[t.Creator]; ok {
+			continue
+		}
+
+		u, err := d.User(t.Creator)
+		if err != nil {
+			return nil, errors.Wrap(err, "Failed to get creator")
+		}
+
+		creators[u.Username] = *u
+	}
+
 	return &smolboard.TokenList{
-		Tokens:  tokens,
-		MaxUses: d.config.MaxTokenUses,
+		Tokens:   tokens,
+		Creators: creators,
+		MaxUses:  d.config.MaxTokenUses,
+		SelfPerm: p,
 	}, nil
 }
 

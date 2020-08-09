@@ -45,7 +45,7 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 	}
 
 	var results = smolboard.SearchResults{
-		Posts: []smolboard.Post{},
+		Posts: make([]smolboard.Post, 0, count),
 	}
 
 	// Get the user if any.
@@ -95,7 +95,7 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 	query.WriteString(header.String())
 	query.WriteString(footer.String())
 	// Sort the ID decrementally, which is latest first.
-	query.WriteString("ORDER BY posts.id DESC ")
+	query.WriteString("GROUP BY posts.id ORDER BY posts.id DESC ")
 
 	// Append the final pagination query. SQL is dumb and wants LIMIT (offset),
 	// (count) for some reason.

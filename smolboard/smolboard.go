@@ -15,6 +15,8 @@ import (
 	"github.com/mattn/go-shellwords"
 )
 
+const ms = int64(time.Millisecond)
+
 // MaxUsernameLen is the maximum username length.
 const MaxUsernameLen = 128
 
@@ -241,7 +243,6 @@ func (p Post) Filename() string {
 // CreatedTime returns the time the post was created. It's milliseconds
 // accurate.
 func (p Post) CreatedTime() time.Time {
-	const ms = int64(time.Millisecond)
 	return time.Unix(0, snowflake.ID(p.ID).Time()*ms)
 }
 
@@ -412,15 +413,16 @@ func (q Query) String() string {
 }
 
 type Session struct {
-	ID       int64  `json:"-" db:"id"`
-	Username string `json:"-" db:"username"`
-	// AuthToken is the token stored in the cookies.
-	AuthToken string `json:"authtoken" db:"authtoken"`
+	ID       int64  `json:"id"       db:"id"`
+	Username string `json:"username" db:"username"`
+	// AuthToken is the token stored in the cookies. It is not returned by
+	// endpoints not sign in.
+	AuthToken string `json:"auth_token,omitempty" db:"authtoken"`
 	// Deadline is gradually updated with each Session call, which is per
 	// request.
 	Deadline int64 `json:"deadline" db:"deadline"`
 	// UserAgent is obtained once on login.
-	UserAgent string `json:"-" db:"useragent"`
+	UserAgent string `json:"user_agent" db:"useragent"`
 }
 
 var (
@@ -433,9 +435,15 @@ func (s Session) IsZero() bool {
 	return s.ID == 0
 }
 
+func (s Session) CreatedAt() time.Time {
+	return time.Unix(0, snowflake.ID(s.ID).Time()*ms)
+}
+
 type TokenList struct {
-	Tokens  []Token
-	MaxUses int
+	Tokens   []Token             `json:"tokens"`
+	Creators map[string]UserPart `json:"creators"`
+	MaxUses  int                 `json:"max_uses"`
+	SelfPerm Permission          `json:"self_perm"`
 }
 
 type Token struct {
@@ -502,3 +510,11 @@ func (u UserPart) CanSetPostPermission(p PostExtended, target Permission) error 
 
 	return u.Permission.HasPermOverUser(target, posterPerm, u.Username, p.GetPoster())
 }
+
+type UserList struct {
+	Users []UserPart `json:"users"`
+	Total int        `json:"total"`
+}
+
+// NoUsers is a zero-value user list containing no users.
+var NoUsers = UserList{}

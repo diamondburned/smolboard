@@ -56,6 +56,55 @@ func (d *Transaction) createUser(username, password string, perm smolboard.Permi
 	return nil
 }
 
+func (d *Transaction) Users(count, page uint) (smolboard.UserList, error) {
+	if count > 100 {
+		return smolboard.NoUsers, smolboard.ErrPageCountLimit
+	}
+
+	p, err := d.Permission()
+	if err != nil {
+		return smolboard.NoUsers, err
+	}
+
+	// Only admins and higherups can list users.
+	if err := p.HasPermission(smolboard.PermissionAdministrator, true); err != nil {
+		return smolboard.NoUsers, err
+	}
+
+	var list = smolboard.UserList{
+		Users: make([]smolboard.UserPart, 0, count),
+	}
+
+	r := d.QueryRow("SELECT COUNT(1) FROM users WHICH permission < ?", p)
+	if err := r.Scan(&list.Total); err != nil {
+		return smolboard.NoUsers, errors.Wrap(err, "Failed to scan total")
+	}
+
+	q, err := d.Queryx(
+		// Only show users whose permissions are lower than the current user.
+		"SELECT * FROM users WHICH permission < ? ORDER BY jointime DESC LIMIT ?, ?",
+		p, count*page, count,
+	)
+
+	if err != nil {
+		return smolboard.NoUsers, errors.Wrap(err, "Failed to get users")
+	}
+
+	defer q.Close()
+
+	for q.Next() {
+		var u smolboard.User
+
+		if err := q.StructScan(&u); err != nil {
+			return smolboard.NoUsers, errors.Wrap(err, "Failed to scan user")
+		}
+
+		list.Users = append(list.Users, u.UserPart)
+	}
+
+	return list, nil
+}
+
 // User returns the user WITHOUT the passhash.
 func (d *Transaction) User(username string) (*smolboard.UserPart, error) {
 	if err := smolboard.NameIsLegal(username); err != nil {
@@ -111,10 +160,27 @@ func (d *Transaction) PromoteUser(username string, p smolboard.Permission) error
 	return nil
 }
 
-// TODO: change password
+func (d *Transaction) ChangePassword(password string) error {
+	if len(password) < smolboard.MinimumPassLength {
+		return smolboard.ErrPasswordTooShort
+	}
 
-// TODO add tests to confirm Trusted cannot delete Normal
-// TODO add tests to confirm Admin cannot delete Owner
+	p, err := bcrypt.GenerateFromPassword([]byte(password), smolboard.HashCost)
+	if err != nil {
+		return errors.Wrap(err, "Failed to generate password")
+	}
+
+	_, err = d.Exec("UPDATE users SET passhash = ? WHERE username = ?", p, d.Session.Username)
+	if err != nil {
+		return errors.Wrap(err, "Failed to change password")
+	}
+
+	if err := d.DeleteAllSessions(); err != nil {
+		return errors.Wrap(err, "Failed to invalidate other sessions")
+	}
+
+	return nil
+}
 
 func (d *Transaction) DeleteUser(username string) error {
 	// Make sure the user performing this action is either the user being

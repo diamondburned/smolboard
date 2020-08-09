@@ -178,6 +178,7 @@ func (d *Transaction) Sessions() ([]smolboard.Session, error) {
 			return nil, errors.Wrap(err, "Failed to scan to a session")
 		}
 
+		s.AuthToken = ""
 		sessions = append(sessions, s)
 	}
 
@@ -186,6 +187,11 @@ func (d *Transaction) Sessions() ([]smolboard.Session, error) {
 
 // DeleteSessionID deletes the person's own session ID.
 func (d *Transaction) DeleteSessionID(id int64) error {
+	// Prevent deleting the same session without properly signing out.
+	if d.Session.ID == id {
+		return d.Signout()
+	}
+
 	// Ensure that we are deleting only this user's token.
 	c, err := d.execChanged(
 		"DELETE FROM sessions WHERE id = ? AND username = ?",
@@ -196,6 +202,18 @@ func (d *Transaction) DeleteSessionID(id int64) error {
 	}
 	if !c {
 		return smolboard.ErrSessionNotFound
+	}
+	return nil
+}
+
+// DeleteAllSessions deletes all sessions except the current one.
+func (d *Transaction) DeleteAllSessions() error {
+	_, err := d.Exec(
+		"DELETE FROM sessions WHERE username = ? AND id != ?",
+		d.Session.Username, d.Session.ID,
+	)
+	if err != nil {
+		return errors.Wrap(err, "Failed to delete sessions")
 	}
 	return nil
 }

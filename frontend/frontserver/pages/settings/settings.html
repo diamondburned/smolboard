@@ -1,0 +1,150 @@
+<body class="settings">
+	<div class="settings">
+		{{ template "nav" . }}
+	
+		<main class="settings single">
+			{{ if .IsAdmin }}
+			<div class="admin-settings">
+				<legend>Administration</legend>
+
+				<a role="button" class="small" href="tokens">
+					Token List
+				</a>
+				<a role="button" class="small" href="users">
+					User List
+				</a>
+			</div>
+			{{ end }}
+
+			<div class="user-settings">
+				<legend>User {{ .Current.Username }}</legend>
+
+				<form class="change-password seamless"
+					  action="users/@me/change-password" method="post"
+				>
+					<label for="chpassword">Change Password</label>
+					<input type="password" id="chpassword" class="small" name="password">
+					<button type="submit" class="small">
+						<span class="icon-lock"></span>
+					</button>
+				</form>
+
+				<label role="button" for="delete-confirm" class="small secondary">
+					<span class="icon-alert secondary inverse"></span>
+					<span>Delete Account</span>
+				</label>
+
+				<input type="checkbox" id="delete-confirm" class="modal">
+				<div role="dialog">
+					<div class="card fluid">
+						<h3 class="section">Delete Account</h3>
+						<p  class="section">
+							Are you sure you want to delete your account?
+							<br>
+							This operation is permanent and cannot be undone.
+						</p>
+
+						<form class="buttons row seamless"
+							  action="users/@me/delete" method="post"
+						>
+							<label role="button" for="delete-confirm" class="small primary">
+								Cancel
+							</label>
+							<button type="submit" class="small secondary">
+								Delete
+							</button>
+						</form>
+					</div>
+				</div>
+			</div>
+
+			<div class="sessions" method="post">
+				<legend>Sessions</legend>
+
+				<div class="session-list">
+					{{ range $index, $session := .Sessions }}
+					<label for="session-{{$index}}" class="dialog-button">
+						{{ $userAgent := (userAgent $session.UserAgent) }}
+
+						<span class="useragent">
+							{{ uaEmoji $userAgent }}
+							{{ $userAgent.Name }}
+							{{ with $userAgent.Device }} on {{ . }} {{ end }}
+							{{ with $userAgent.OS }} running {{ . }} {{ end }}
+						</span>
+
+						{{ $deadline := (unixNano $session.Deadline) }}
+
+						<span class="expiry">
+							expires <time id="expiry" datetime="{{ htmlTime $deadline }}">
+								{{ humanizeTime $deadline }}
+							</time>
+						</span>
+					</label>
+
+					<input type="checkbox" id="session-{{$index}}" class="modal">
+					<div role="dialog">
+						<div class="card large">
+							<label for="session-{{$index}}" class="modal-close"></label>
+
+							<h3>Session</h3>
+
+							<div class="section table">
+								<span>ID</span>
+								<span id="id">{{ $session.ID }}</span>
+
+								{{ with $session.CreatedAt }}
+								<span>Created</span>
+								<time datetime="{{ htmlTime . }}" id="created">
+									{{ humanizeTime . }}
+								</time>
+								{{ end }}
+
+								{{ with $deadline }}
+								<span>Expires</span>
+								<time datetime="{{ htmlTime . }}" id="expiry">
+									{{ humanizeTime . }}
+								</time>
+								{{ end }}
+
+								{{ if $userAgent.Name }}
+								<span>Browser</span>
+								<span id="browser">
+									{{$userAgent.Name}} {{$userAgent.Version}}
+								</span>
+								{{ end }}
+
+								{{ if $userAgent.OS }}
+								<span>Operating System</span>
+								<span id="os">
+									{{$userAgent.OS}} {{$userAgent.OSVersion}}
+								</span>
+								{{ end }}
+
+								{{ if $userAgent.Device }}
+								<span>Device</span>
+								<span id="device">{{ $userAgent.Device }}</span>
+								{{ end }}
+							</div>
+
+							<form class="actions section seamless">
+								<legend>Actions</legend>
+
+								<button type="submit" class="delete-session secondary"
+										formmethod="post"
+										formaction="sessions/{{$session.ID}}/delete"
+								>
+									<span class="icon-alert secondary inverse"></span>
+									<span>Invalidate Session</span>
+								</button>
+							</form>
+						</div>
+					</div>
+					{{ end }}
+				</div>
+			</div>
+		</main>
+	</div>
+
+	{{ template "footer" }}
+</body>

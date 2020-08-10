@@ -3,8 +3,13 @@
 	margin-bottom: 0;
 }
 
-.settings .session-list .table {
+.settings .session-list div.table {
 	padding: var(--universal-padding) calc(2 * var(--universal-padding));
+}
+
+.settings .session-list span.dates,
+.settings .session-list span.current {
+	color: var(--secondary-fore-color);
 }
 
 .settings #delete-confirm + div form.buttons {
@@ -28,33 +33,47 @@
     flex: 1;
 }
 
+.settings div.user-settings label[for="delete-confirm"].sensitive {
+	margin-top: calc(1.5 * var(--universal-margin));
+}
+
 .settings div.user-settings {
 	display: flex;
+	flex-flow: row wrap;
 	align-items: center;
-	flex-direction: row;
 }
 
 .settings div.user-settings form.change-password {
 	flex: 1;
 
     display: flex;
+	flex-flow: row wrap;
     align-items: center;
+
+	margin: 0 var(--universal-margin);
 }
 
-.settings div.user-settings form.change-password > label,
-.settings div.user-settings form.change-password > button {
+.settings div.user-settings form.change-password > div {
+	flex: 1;
+
+    display:  flex;
+	overflow: visible;
+}
+
+.settings div.user-settings form.change-password label,
+.settings div.user-settings form.change-password button {
 	white-space: nowrap;
 }
 
-.settings div.user-settings form.change-password > input {
+.settings div.user-settings form.change-password input {
 	flex: 1;
 }
 
-.settings div.user-settings form.change-password > .small {
-	margin: 0 var(--universal-margin);
-    padding: calc(0.5 * var(--universal-padding)) calc(0.75 * var(--universal-padding));
+.settings div.user-settings form.change-password .small {
+	margin:  0;
+    padding: calc(0.5 * var(--universal-padding)) var(--universal-padding);
 }
 
-.settings div.user-settings form.change-password > .small:last-child {
-	margin-left: 0;
+.settings div.user-settings form.change-password .small:last-child {
+	margin-left: var(--universal-margin);
 }

@@ -7,11 +7,11 @@
 			<div class="admin-settings">
 				<legend>Administration</legend>
 
-				<a role="button" class="small" href="tokens">
-					Token List
+				<a role="button" class="small" href="/settings/tokens">
+					Tokens
 				</a>
-				<a role="button" class="small" href="users">
-					User List
+				<a role="button" class="small" href="/settings/users">
+					Users
 				</a>
 			</div>
 			{{ end }}
@@ -20,14 +20,16 @@
 				<legend>User</legend>
 
 				<form class="change-password seamless"
-					  action="users/@me/change-password" method="post"
+					  action="/settings/users/@me/change-password" method="post"
 				>
 					<label for="chpassword">Change Password</label>
-					<input type="password" id="chpassword" class="small" name="password">
-					<button type="submit" class="small">
-						<span class="icon-lock"></span>
-						<span>Apply</span>
-					</button>
+					<div>
+						<input type="password" id="chpassword" class="small" name="password">
+						<button type="submit" class="small">
+							<span class="icon-lock"></span>
+							<span>Apply</span>
+						</button>
+					</div>
 				</form>
 
 				<label role="button" for="delete-confirm" class="sensitive small secondary">
@@ -46,7 +48,7 @@
 						</p>
 
 						<form class="buttons row seamless"
-							  action="users/@me/delete" method="post"
+							  action="/settings/users/@me/delete" method="post"
 						>
 							<label role="button" for="delete-confirm" class="small primary">
 								Cancel
@@ -67,19 +69,29 @@
 					<label for="session-{{$index}}" class="dialog-button">
 						{{ $userAgent := (userAgent $session.UserAgent) }}
 
-						<span class="useragent">
-							{{ uaEmoji $userAgent }}
-							{{ $userAgent.Name }}
-							{{ with $userAgent.Device }} on {{ . }} {{ end }}
-							{{ with $userAgent.OS }} running {{ . }} {{ end }}
-						</span>
+						<div class="description">
+							<span class="useragent">
+								{{ uaEmoji $userAgent }}
+								{{ $userAgent.Name }}
+								{{ with $userAgent.Device }} on {{ . }} {{ end }}
+								{{ with $userAgent.OS }} running {{ . }} {{ end }}
+							</span>
+
+							{{ if (not (eq $session.AuthToken "")) }}
+							<span class="current">(current)</span>
+							{{ end }}
+						</div>
 
 						{{ $deadline := (unixNano $session.Deadline) }}
 
-						<span class="expiry">
-							expires <time id="expiry" datetime="{{ htmlTime $deadline }}">
-								{{ humanizeTime $deadline }}
-							</time>
+						<span class="dates">
+							created
+							<time id="created" datetime="{{ htmlTime $session.CreatedAt }}"
+							>{{ humanizeTime $session.CreatedAt }}</time>,
+
+							expires
+							<time id="expiry" datetime="{{ htmlTime $deadline }}"
+							>{{ humanizeTime $deadline }}</time>
 						</span>
 					</label>
 
@@ -133,7 +145,7 @@
 
 								<button type="submit" class="delete-session small secondary"
 										formmethod="post"
-										formaction="sessions/{{$session.ID}}/delete"
+										formaction="/settings/sessions/{{$session.ID}}/delete"
 								>
 									<span class="icon-alert secondary inverse"></span>
 									<span>Invalidate Session</span>

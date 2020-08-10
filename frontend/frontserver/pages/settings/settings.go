@@ -3,6 +3,7 @@ package settings
 import (
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -94,6 +95,11 @@ func userPanel(r *render.Request) (render.Render, error) {
 	if err != nil {
 		return render.Empty, errors.Wrap(err, "Failed to get sessions")
 	}
+
+	// Put the current session first.
+	sort.SliceStable(s, func(i, j int) bool {
+		return s[i].AuthToken != ""
+	})
 
 	return render.Render{
 		Title: "Settings",

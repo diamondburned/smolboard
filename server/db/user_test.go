@@ -104,8 +104,12 @@ func TestUser(t *testing.T) {
 				t.Fatal("Failed to get users:", err)
 			}
 
-			if len(u) != 2 {
+			if len(u.Users) != 2 {
 				t.Fatalf("Invalid users slice: %#v", u)
+			}
+
+			if u.Total != 2 {
+				t.Fatalf("Invalid total: %d", u.Total)
 			}
 		})
 

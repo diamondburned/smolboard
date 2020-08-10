@@ -1,10 +1,12 @@
-main.tokens > div.header {
+main > div.tokens > div.header {
 	display: flex;
 	flex-flow: row wrap;
 	justify-content: space-between;
 }
 
-main.tokens > div.header h3 {
+main > div.tokens > div.header h3,
+main > div.tokens > div.header form.add-token,
+main > div.tokens > div.token-list p.no-token-msg {
 	margin: auto calc(2 * var(--universal-margin));
 }
 
@@ -47,4 +49,4 @@ div.token-list div[role="dialog"] h3 {
 
 div.token-list .token-actions button {
     text-align: start;
-
+}

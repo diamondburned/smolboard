@@ -415,8 +415,8 @@ func (q Query) String() string {
 type Session struct {
 	ID       int64  `json:"id"       db:"id"`
 	Username string `json:"username" db:"username"`
-	// AuthToken is the token stored in the cookies. It is not returned by
-	// endpoints not sign in.
+	// AuthToken is the token stored in the cookies. If the session isn't the
+	// current one, then AuthToken will be empty.
 	AuthToken string `json:"auth_token,omitempty" db:"authtoken"`
 	// Deadline is gradually updated with each Session call, which is per
 	// request.

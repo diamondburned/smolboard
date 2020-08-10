@@ -53,11 +53,13 @@ func (r renderCtx) MinTokenUses() int {
 func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(renderPage))
+	mux.Post("/", muxer.M(createToken))
+	mux.Post("/{token}/delete", muxer.M(deleteToken))
 	return mux
 }
 
 func renderPage(r *render.Request) (render.Render, error) {
-	t, err := r.Session.ListTokens()
+	t, err := r.Session.Tokens()
 	if err != nil {
 		return render.Empty, errors.Wrap(err, "Failed to get tokens")
 	}
@@ -70,4 +72,28 @@ func renderPage(r *render.Request) (render.Render, error) {
 			TokenList: t,
 		}),
 	}, nil
+}
+
+func createToken(r *render.Request) (render.Render, error) {
+	u, err := strconv.Atoi(r.FormValue("uses"))
+	if err != nil {
+		return render.Empty, errors.Wrap(err, "Failed to parse uses int")
+	}
+
+	_, err = r.Session.CreateToken(u)
+	if err != nil {
+		return render.Empty, err
+	}
+
+	r.Redirect(r.Referer(), http.StatusSeeOther)
+	return render.Empty, nil
+}
+
+func deleteToken(r *render.Request) (render.Render, error) {
+	if err := r.Session.DeleteToken(chi.URLParam(r.Request, "token")); err != nil {
+		return render.Empty, err
+	}
+
+	r.Redirect(r.Referer(), http.StatusSeeOther)
+	return render.Empty, nil
 }

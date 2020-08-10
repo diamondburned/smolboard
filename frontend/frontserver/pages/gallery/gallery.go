@@ -24,9 +24,6 @@ func init() {
 	)
 }
 
-const MaxThumbSize = 300
-const PageSize = 25
-
 var tmpl = render.BuildPage("home", render.Page{
 	Template: pkger.Include("/frontend/frontserver/pages/gallery/gallery.html"),
 	Components: map[string]render.Component{
@@ -46,6 +43,9 @@ var tmpl = render.BuildPage("home", render.Page{
 	},
 })
 
+const MaxThumbSize = 300
+const PageSize = 25
+
 func genericMIME(mime string) string {
 	if parts := strings.Split(mime, "/"); len(parts) > 0 {
 		return parts[0]
@@ -57,13 +57,22 @@ type renderCtx struct {
 	render.CommonCtx
 	smolboard.SearchResults
 
-	Query string // ?q=X
-	Page  int    // ?p=X
+	Query string   // ?q=X
+	Page  int      // ?p=X
+	Types []string // MIME types
+}
+
+func (r renderCtx) IsMe() bool {
+	return r.User != nil && r.User.Username == r.Username
+}
+
+func (r renderCtx) AllowedTypes() string {
+	return strings.Join(r.Types, ",")
 }
 
 func (r renderCtx) AllowedUploadPerms() []smolboard.Permission {
 	// Guests can't upload.
-	if r.User == nil || r.User.Permission == smolboard.PermissionGuest {
+	if !r.IsMe() || r.User.Permission == smolboard.PermissionGuest {
 		return nil
 	}
 
@@ -138,6 +147,16 @@ func pageRender(r *render.Request) (render.Render, error) {
 
 		Page:  page,
 		Query: query,
+	}
+
+	// If we can upload, then we should get the supported MIME types for the
+	// uploader form.
+	if renderCtx.IsMe() {
+		m, err := r.Session.AllowedTypes()
+		if err != nil {
+			return render.Empty, errors.Wrap(err, "Failed to get allowed types")
+		}
+		renderCtx.Types = m
 	}
 
 	return render.Render{

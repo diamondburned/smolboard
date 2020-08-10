@@ -80,7 +80,7 @@
 				>
 					<legend>Upload Files</legend>
 	
-					<input  type="file"     name="file" multiple>
+					<input  type="file" name="file" accept="{{ $.AllowedTypes }}" multiple>
 					<select id="permission" name="p">
 						{{ range . }}
 						<option value="{{ .StringInt }}">{{ . }}</option>
@@ -98,9 +98,10 @@
 				</form>
 				{{ end }}
 	
-				{{ if .Username }}
-				<form class="logout" action="/signout" method="post">
-					<button type="submit" class="small">Sign out</button>
+				{{ if .IsMe }}
+				<form class="user-actions" action="/signout" method="post">
+					<a role="button" href="/settings" class="small">Settings</a>
+					<button type="submit" id="logout" class="small">Sign out</button>
 				</form>
 				{{ end }}
 			</aside>

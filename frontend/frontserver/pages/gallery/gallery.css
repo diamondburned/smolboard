@@ -86,9 +86,10 @@
 	border-radius: var(--universal-border-radius);
 }
 
-.logout {
+form.user-actions {
 	display: flex;
-	align-items: center;
+	flex-direction: row;
+	justify-content: center;
 }
 
 main.posts {

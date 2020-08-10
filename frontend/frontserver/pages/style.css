@@ -172,6 +172,9 @@ label.dialog-button > *:first-child {
     margin-right: var(--universal-margin);
 }
 
+/* Force overlay scrolling on container blocks. */
+body, div, main, aside { overflow: overlay }
+
 *::-webkit-scrollbar,
 *::-webkit-scrollbar-track {
 	margin: calc(0.8 * var(--universal-margin)) 0;
@@ -191,9 +194,9 @@ label.dialog-button > *:first-child {
 *::-webkit-scrollbar-thumb {
 	box-shadow: inset 0 0 0 2px transparent;
 }
+*::-webkit-scrollbar-thumb:hover {
+	box-shadow: inset 0 0 0 2px var(--fore-color);
+}
 *:hover::-webkit-scrollbar-thumb {
 	box-shadow: inset 0 0 0 2px var(--modal-overlay-color);
-}
-*:hover::-webkit-scrollbar-thumb:hover {
-	box-shadow: inset 0 0 0 2px var(--fore-color);
 }

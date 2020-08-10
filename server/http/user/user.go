@@ -31,7 +31,12 @@ func Mount(m tx.Middlewarer) http.Handler {
 		r.Route("/sessions", func(r chi.Router) {
 			r.Get("/", m(GetSessions))
 			r.Delete("/", m(DeleteAllSessions))
-			r.Delete("/{sessionID}", m(DeleteSession))
+
+			// {sessionID} or @this
+			r.Route(`/{sessionID:(\d+|@this)}`, func(r chi.Router) {
+				r.Get("/", m(GetSession))
+				r.Delete("/", m(DeleteSession))
+			})
 		})
 	})
 
@@ -44,6 +49,19 @@ func username(r tx.Request) string {
 		return r.Tx.Session.Username
 	}
 	return username
+}
+
+func sessionID(r tx.Request) (i int64, err error) {
+	if param := r.Param("sessionID"); param == "@this" {
+		i = r.Tx.Session.ID
+	} else {
+		i, err = strconv.ParseInt(r.Param("sessionID"), 10, 64)
+		if err != nil {
+			return 0, errors.Wrap(err, "Failed to parse session ID")
+		}
+	}
+
+	return
 }
 
 type UsersParams struct {
@@ -99,12 +117,25 @@ func DeleteUser(r tx.Request) (interface{}, error) {
 	return nil, r.Tx.DeleteUser(username(r))
 }
 
+func GetCurrentSession(r tx.Request) (interface{}, error) {
+	return r.Tx.Session, nil
+}
+
 func GetSessions(r tx.Request) (interface{}, error) {
 	return r.Tx.Sessions()
 }
 
+func GetSession(r tx.Request) (interface{}, error) {
+	i, err := sessionID(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to parse session ID")
+	}
+
+	return r.Tx.SessionFromID(i)
+}
+
 func DeleteSession(r tx.Request) (interface{}, error) {
-	i, err := strconv.ParseInt(r.Param("sessionID"), 10, 64)
+	i, err := sessionID(r)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to parse session ID")
 	}

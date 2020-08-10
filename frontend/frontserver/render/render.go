@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -124,13 +123,6 @@ func (r *Request) IDParam() (int64, error) {
 func (r *Request) Redirect(path string, code int) {
 	// Flush the cookies before writing the header.
 	r.FlushCookies()
-
-	// If the URL matches the current path, then we should redirect somewhere
-	// else.
-	if u, err := url.Parse(path); err == nil && u.Path == r.URL.Path {
-		path = "/posts"
-	}
-
 	http.Redirect(r.Writer, r.Request, path, code)
 }
 

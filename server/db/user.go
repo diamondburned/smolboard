@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"log"
 	"time"
 
 	"github.com/diamondburned/smolboard/smolboard"
@@ -75,14 +76,19 @@ func (d *Transaction) Users(count, page uint) (smolboard.UserList, error) {
 		Users: make([]smolboard.UserPart, 0, count),
 	}
 
-	r := d.QueryRow("SELECT COUNT(1) FROM users WHICH permission < ?", p)
-	if err := r.Scan(&list.Total); err != nil {
+	log.Println("Permission:", p)
+
+	err = d.
+		QueryRow("SELECT COUNT(1) FROM users WHERE permission < ?", p).
+		Scan(&list.Total)
+
+	if err != nil {
 		return smolboard.NoUsers, errors.Wrap(err, "Failed to scan total")
 	}
 
 	q, err := d.Queryx(
 		// Only show users whose permissions are lower than the current user.
-		"SELECT * FROM users WHICH permission < ? ORDER BY jointime DESC LIMIT ?, ?",
+		"SELECT * FROM users WHERE permission < ? ORDER BY jointime DESC LIMIT ?, ?",
 		p, count*page, count,
 	)
 

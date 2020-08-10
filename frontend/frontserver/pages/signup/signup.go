@@ -82,6 +82,6 @@ func handlePOST(r *render.Request) (render.Render, error) {
 		Domain: tcookie.Domain,
 	})
 
-	r.Redirect(r.Referer(), http.StatusFound)
+	r.Redirect("/posts", http.StatusFound)
 	return render.Empty, nil
 }

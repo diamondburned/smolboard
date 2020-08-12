@@ -29,14 +29,14 @@
 					{{ range $index, $token := .Tokens }}
 					<div class="token">
 						<label for="token-{{$index}}" class="dialog-button">
-							<div id="left">
+							<div class="left">
 								<span id="creator">{{ $token.Creator }}</span>
 								<span id="permission">
 									{{ printf "(%s)" (index $.Creators $token.Creator).Permission }}
 								</span>
 							</div>
 	
-							<div id="right">
+							<div class="right">
 								<span id="remaining">{{ negInf $token.Remaining }}</span>
 								<span>uses</span>
 							</div>

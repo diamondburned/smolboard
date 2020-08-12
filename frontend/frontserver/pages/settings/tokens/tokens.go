@@ -1,4 +1,4 @@
-package tokenlist
+package tokens
 
 import (
 	"fmt"
@@ -17,12 +17,12 @@ import (
 
 func init() {
 	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/settings/tokenlist/tokenlist.css"),
+		pkger.Include("/frontend/frontserver/pages/settings/tokens/tokens.css"),
 	)
 }
 
 var tmpl = render.BuildPage("cpanel", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/settings/tokenlist/tokenlist.html"),
+	Template: pkger.Include("/frontend/frontserver/pages/settings/tokens/tokens.html"),
 	Components: map[string]render.Component{
 		"nav":    nav.Component,
 		"footer": footer.Component,

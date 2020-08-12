@@ -221,7 +221,6 @@ type Transaction struct {
 func (d *Database) begin(ctx context.Context, session string) (*Transaction, error) {
 	t, err := d.DB.BeginTxx(ctx, nil)
 	if err != nil {
-		log.Println("Failed to acquire.", string(debug.Stack()))
 		return nil, err
 	}
 

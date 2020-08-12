@@ -3,13 +3,13 @@ package gallery
 import (
 	"fmt"
 	"html/template"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/nav"
+	"github.com/diamondburned/smolboard/frontend/frontserver/components/pager"
 	"github.com/diamondburned/smolboard/frontend/frontserver/internal/unblur"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/diamondburned/smolboard/smolboard"
@@ -27,24 +27,17 @@ func init() {
 var tmpl = render.BuildPage("home", render.Page{
 	Template: pkger.Include("/frontend/frontserver/pages/gallery/gallery.html"),
 	Components: map[string]render.Component{
+		"pager":  pager.Component,
 		"nav":    nav.Component,
 		"footer": footer.Component,
 	},
 	Functions: map[string]interface{}{
 		"isImage": func(ctype string) bool { return genericMIME(ctype) == "image" },
 		"isVideo": func(ctype string) bool { return genericMIME(ctype) == "video" },
-
-		"numPages": func(max int) int {
-			return int(math.Ceil(float64(max) / PageSize))
-		},
-
-		"dec": func(i int) int { return i - 1 },
-		"inc": func(i int) int { return i + 1 },
 	},
 })
 
 const MaxThumbSize = 300
-const PageSize = 25
 
 func genericMIME(mime string) string {
 	if parts := strings.Split(mime, "/"); len(parts) > 0 {
@@ -131,7 +124,7 @@ func pageRender(r *render.Request) (render.Render, error) {
 
 	var query = r.FormValue("q")
 
-	p, err := r.Session.PostSearch(query, PageSize, page-1)
+	p, err := r.Session.PostSearch(query, pager.PageSize, page-1)
 	if err != nil {
 		return render.Empty, err
 	}

@@ -1,0 +1,32 @@
+{{ $lastPage := (numPages .Total) }}
+{{ $prevPage := (dec .Page) }}
+{{ $nextPage := (inc .Page) }}
+
+<div class="page-buttons">
+	<button type="submit" class="last-page small" name="p"
+		{{ if (gt $prevPage 0) }}
+		value="{{ $prevPage }}"
+		{{ else }}
+		disabled
+		{{ end }}
+	>
+		❮ Prev
+	</button>
+
+	<input type="submit" style="display: none">
+	<input type="number" class="page-input small"
+		   alt="Page Number"
+		   min="1" max="{{ $lastPage }}" value="{{ .Page }}"
+	>
+	<span class="max-page"> / {{ $lastPage }}</span>
+
+	<button type="submit" class="next-page small" name="p"
+		{{ if (le $nextPage $lastPage) }}
+		value="{{ $nextPage }}"
+		{{ else }}
+		disabled
+		{{ end }}
+	>
+		Next ❯
+	</button>
+</div>

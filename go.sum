@@ -4,8 +4,6 @@ github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBK
 github.com/andybalholm/brotli v1.0.0 h1:7UCwP93aiSfvWpapti8g88vVVGp2qqtGyePsSuDafo4=
 github.com/andybalholm/brotli v1.0.0/go.mod h1:loMXtMfwqflxFJPmdbJO0a3KNoPuLBgiu3qAvBg8x/Y=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/bbrks/go-blurhash v0.0.0-20190629155354-b1b1c817265b h1:I0zw4Ni0LTCl25fE94tNcxtXQP9NTfNMzyeORAAUqpc=
-github.com/bbrks/go-blurhash v0.0.0-20190629155354-b1b1c817265b/go.mod h1:lkAsdyXp+EhARcUo85yS2G1o+Sh43I2ebF5togC4bAY=
 github.com/bwmarrin/snowflake v0.3.0 h1:xm67bEhkKh6ij1790JB83OujPR5CzNe8QuQqAgISZN0=
 github.com/bwmarrin/snowflake v0.3.0/go.mod h1:NdZxfVWX+oR6y2K0o6qAYv6gIOP9rjG0/E9WsDpxqwE=
 github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee h1:BnPxIde0gjtTnc9Er7cxvBk8DHLWhEux0SxayC8dP6I=
@@ -17,9 +15,6 @@ github.com/diamondburned/duration v0.0.0-20200725205405-36cde0024396 h1:6V+XSBWf
 github.com/diamondburned/duration v0.0.0-20200725205405-36cde0024396/go.mod h1:N6RtUWkNDnMLtOoTc3uvwXPqsTXcPrhIeys5byHZZyY=
 github.com/diamondburned/go-blurhash v0.0.0-20200729185525-9fa9a8820d7f h1:yIuMasB8tvb9KMx6Na6uf3cVPl/wgBxV/WeedncN2lY=
 github.com/diamondburned/go-blurhash v0.0.0-20200729185525-9fa9a8820d7f/go.mod h1:lkAsdyXp+EhARcUo85yS2G1o+Sh43I2ebF5togC4bAY=
-github.com/didip/tollbooth v1.0.0 h1:nVIxVp0Jj75TVxTwUdbRzC0qO0K/LRZudetGemvTCxQ=
-github.com/didip/tollbooth v4.0.2+incompatible h1:fVSa33JzSz0hoh2NxpwZtksAzAgd7zjmGO20HCZtF4M=
-github.com/didip/tollbooth v4.0.2+incompatible/go.mod h1:A9b0665CE6l1KmzpDws2++elm/CsuWBMa5Jv4WY0PEY=
 github.com/didip/tollbooth/v6 v6.0.1 h1:QvLvRpB1G2bzKvkRze0muMUBlGN9H1z7tJ4DH4ypWOU=
 github.com/didip/tollbooth/v6 v6.0.1/go.mod h1:j2pKs+JQ5PvU/K4jFnrnwntrmfUbYLJE5oSdxR37FD0=
 github.com/disintegration/imaging v1.6.2 h1:w1LecBlG2Lnp8B3jk5zSuNqd7b4DXhcjwek1ei82L+c=
@@ -63,7 +58,6 @@ github.com/mileusna/useragent v1.0.1 h1:4dZjU72iP2xEI2bnZomP4LEO5D/9KoeY8v0hYsPr
 github.com/mileusna/useragent v1.0.1/go.mod h1:3d8TOmwL/5I8pJjyVDteHtgDGcefrFUX4ccGOMKNYYc=
 github.com/pelletier/go-toml v1.8.0 h1:Keo9qb7iRJs2voHvunFtuuYFsbWeOBh8/P9v/kVMFtw=
 github.com/pelletier/go-toml v1.8.0/go.mod h1:D6yutnOGMveHEPV7VQOuvI/gXY61bv+9bAOTRnLElKs=
-github.com/peterbourgon/diskv v1.0.0 h1:bRU92KzrX3TQ6IYobfie/PnZkFC+1opBfHpf/PHPDoo=
 github.com/peterbourgon/diskv v2.0.1+incompatible h1:UBdAOUP5p4RWqPBg048CAvpKN+vxiaj6gdUUzhl4XmI=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
 github.com/pixiv/go-libjpeg v0.0.0-20190822045933-3da21a74767d h1:ls+7AYarUlUSetfnN/DKVNcK6W8mQWc6VblmOm4XwX0=

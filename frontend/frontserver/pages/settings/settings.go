@@ -5,13 +5,12 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"time"
 
 	"github.com/diamondburned/smolboard/client"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/nav"
-	"github.com/diamondburned/smolboard/frontend/frontserver/pages/settings/tokenlist"
-	"github.com/diamondburned/smolboard/frontend/frontserver/pages/settings/userlist"
+	"github.com/diamondburned/smolboard/frontend/frontserver/pages/settings/tokens"
+	"github.com/diamondburned/smolboard/frontend/frontserver/pages/settings/users"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
@@ -36,9 +35,6 @@ var tmpl = render.BuildPage("cpanel", render.Page{
 	Functions: template.FuncMap{
 		"userAgent": func(s string) ua.UserAgent {
 			return ua.Parse(s)
-		},
-		"unixNano": func(i int64) time.Time {
-			return time.Unix(0, i)
 		},
 		"uaEmoji": func(u ua.UserAgent) string {
 			switch {
@@ -69,9 +65,9 @@ func (r renderCtx) IsAdmin() bool {
 func Mount(muxer render.Muxer) http.Handler {
 	mux := chi.NewMux()
 	mux.Get("/", muxer.M(userPanel))
-	mux.Post("/sessions/{sessionID}/delete", muxer.M(nil))
+	mux.Post("/sessions/{sessionID}/delete", muxer.M(deleteSession))
 
-	mux.Mount("/tokens", tokenlist.Mount(muxer))
+	mux.Mount("/tokens", tokens.Mount(muxer))
 
 	mux.Route("/users", func(mux chi.Router) {
 		mux.Route("/@me", func(mux chi.Router) {
@@ -79,7 +75,7 @@ func Mount(muxer render.Muxer) http.Handler {
 			mux.Post("/change-password", muxer.M(changePassword))
 		})
 
-		mux.Mount("/", userlist.Mount(muxer))
+		mux.Mount("/", users.Mount(muxer))
 	})
 
 	return mux
@@ -113,7 +109,7 @@ func userPanel(r *render.Request) (render.Render, error) {
 
 func deleteUser(r *render.Request) (render.Render, error) {
 	if err := r.Session.DeleteMe(); err != nil {
-		return render.Empty, nil
+		return render.Empty, err
 	}
 
 	r.Redirect("/", http.StatusSeeOther)

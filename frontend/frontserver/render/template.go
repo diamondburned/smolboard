@@ -29,6 +29,9 @@ var globalFns = template.FuncMap{
 	"htmlTime": func(t time.Time) string {
 		return t.Format("2006-01-02T15:04")
 	},
+	"unixNano": func(i int64) time.Time {
+		return time.Unix(0, i)
+	},
 	"humanizeSize": func(bytes int64) string {
 		return humanize.Bytes(uint64(bytes))
 	},

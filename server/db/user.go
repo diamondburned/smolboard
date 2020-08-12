@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"log"
 	"time"
 
 	"github.com/diamondburned/smolboard/smolboard"
@@ -58,6 +57,10 @@ func (d *Transaction) createUser(username, password string, perm smolboard.Permi
 }
 
 func (d *Transaction) Users(count, page uint) (smolboard.UserList, error) {
+	return d.SearchUsers("", count, page)
+}
+
+func (d *Transaction) SearchUsers(qs string, count, page uint) (smolboard.UserList, error) {
 	if count > 100 {
 		return smolboard.NoUsers, smolboard.ErrPageCountLimit
 	}
@@ -76,20 +79,25 @@ func (d *Transaction) Users(count, page uint) (smolboard.UserList, error) {
 		Users: make([]smolboard.UserPart, 0, count),
 	}
 
-	log.Println("Permission:", p)
+	// Hack to list all users if the current user is an owner.
+	if p == smolboard.PermissionOwner {
+		p++
+	}
 
-	err = d.
-		QueryRow("SELECT COUNT(1) FROM users WHERE permission < ?", p).
-		Scan(&list.Total)
+	r := d.QueryRow(`
+		SELECT COUNT(1) FROM users WHERE permission < ? AND username LIKE ? || '%'`,
+		p, qs,
+	)
 
-	if err != nil {
+	if err := r.Scan(&list.Total); err != nil {
 		return smolboard.NoUsers, errors.Wrap(err, "Failed to scan total")
 	}
 
-	q, err := d.Queryx(
-		// Only show users whose permissions are lower than the current user.
-		"SELECT * FROM users WHERE permission < ? ORDER BY jointime DESC LIMIT ?, ?",
-		p, count*page, count,
+	// Only show users whose permissions are lower than the current user.
+	q, err := d.Queryx(`
+		SELECT * FROM users WHERE permission < ? AND username LIKE ? || '%'
+			ORDER BY jointime ASC, permission DESC LIMIT ?, ?`,
+		p, qs, count*page, count,
 	)
 
 	if err != nil {

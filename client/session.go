@@ -96,11 +96,18 @@ func (s *Session) User(username string) (u smolboard.UserPart, err error) {
 // Users gets a paginated list of users. The default value for count is 50. This
 // endpoint is only allowed for the owner and admins.
 func (s *Session) Users(count, page int) (u smolboard.UserList, err error) {
+	return s.SearchUsers("", count, page)
+}
+
+// SearchUsers searches for a user. The default values from Users applies here
+// as well. If q is empty, then all users are listed.
+func (s *Session) SearchUsers(q string, count, page int) (u smolboard.UserList, err error) {
 	if count == 0 {
 		count = 50
 	}
 
 	return u, s.Client.Get("/users", &u, url.Values{
+		"q": {q},
 		"c": {strconv.Itoa(count)},
 		"p": {strconv.Itoa(page)},
 	})

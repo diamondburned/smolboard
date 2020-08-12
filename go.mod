@@ -11,7 +11,6 @@ require (
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/c2h5oh/datasize v0.0.0-20200112174442-28bbd4740fee
 	github.com/diamondburned/duration v0.0.0-20200725205405-36cde0024396
-	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/didip/tollbooth/v6 v6.0.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/dustin/go-humanize v1.0.0

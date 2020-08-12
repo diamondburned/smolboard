@@ -1,35 +1,3 @@
-.paginator > .page-buttons {
-	display: flex;
-	align-items: center;
-	flex-direction: row;
-}
-
-.paginator > .page-buttons > * {
-    white-space: nowrap;
-    padding: calc(0.5 * var(--universal-padding)) calc(1.5 * var(--universal-padding));
-}
-
-.paginator button.next-page,
-.paginator button.last-page {
-	flex: 1;
-	color: var(--fore-color);
-}
-
-.paginator button:disabled {
-	color: var(--secondary-fore-color);
-}
-
-.paginator > .page-buttons > .page-input {
-	color: var(--secondary-fore-color);
-    border: none;
-    background: inherit;
-
-	padding-right: 0;
-
-    width: 20%;
-    text-align: right;
-}
-
 .uploader {
 	display: flex;
 	flex-direction: column;

@@ -186,9 +186,12 @@ func (d *Transaction) SessionFromID(id int64) (s *smolboard.Session, err error) 
 // unless it is the current session. The sessions will be sorted from newest to
 // oldest.
 func (d *Transaction) Sessions() ([]smolboard.Session, error) {
+	// Get any sessions with the deadline before now.
+	var now = time.Now().UnixNano()
+
 	r, err := d.Queryx(
-		"SELECT * FROM sessions WHERE username = ? ORDER BY id DESC",
-		d.Session.Username,
+		"SELECT * FROM sessions WHERE username = ? AND deadline > ? ORDER BY id DESC",
+		d.Session.Username, now,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to query for sessions")

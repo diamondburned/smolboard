@@ -1,0 +1,74 @@
+<body class="users">
+	<div class="users-page">
+		{{ template "nav" . }}
+
+		<main class="single">
+			<div class="users">
+				<div class="header">
+					<h3>Users <small id="total">Total: {{ .Total }}</small></h3>
+
+					<form class="user-search seamless" action="/settings/users">
+						<input type="text" name="q" value="{{ .Query }}"
+							   title="User Search" placeholder="Search Users"
+						>
+
+						<button type="submit" value="Submit" title="Submit Search">
+							<span class="icon-search"></span>
+						</button>
+					</form>
+				</div>
+
+				<div class="user-list">
+					{{ range $index, $user := .Users }}
+					<div class="user">
+						<label for="user-{{$index}}" class="dialog-button">
+							<span id="username">{{ $user.Username }}</span>
+							<span id="permission">{{ $user.Permission }}</span>
+						</label>
+
+						<input type="checkbox" id="user-{{$index}}" class="modal">
+						<div role="dialog">
+							<div class="card">
+								<label for="user-{{$index}}" class="modal-close"></label>
+
+								<h3>User</h3>
+
+								<div class="section table">
+									<span>Username</span>
+									<span id="username">{{ $user.Username }}</span>
+
+									{{ with (unixNano $user.JoinTime) }}
+									<span>Joined at</span>
+									<time id="join" datetime="{{ htmlTime . }}">
+										{{ humanizeTime . }}
+									</time>
+									{{ end }}
+
+									<span>Permission</span>
+									<span id="permission">{{ $user.Permission }}</span>
+								</div>
+
+								<form class="actions section seamless">
+									<legend>Actions</legend>
+
+									<button type="submit" class="delete-user small secondary"
+											formmethod="post"
+											formaction="/settings/users/{{$user.Username}}/delete"
+									>
+										<span class="icon-alert secondary inverse"></span>
+										<span>Delete User</span>
+									</button>
+								</form>
+							</div>
+						</div>
+					</div>
+					{{ end }}
+				</div>
+
+				<form class="seamless paginator" action="/settings/users">
+					{{ template "pager" . }}
+				</form>
+			</div>
+		</main>
+	</div>
+</body>

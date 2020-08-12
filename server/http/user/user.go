@@ -65,8 +65,9 @@ func sessionID(r tx.Request) (i int64, err error) {
 }
 
 type UsersParams struct {
-	Count uint `schema:"c"`
-	Page  uint `schema:"p"`
+	Query string `schema:"q"`
+	Count uint   `schema:"c"`
+	Page  uint   `schema:"p"`
 }
 
 func GetUsers(r tx.Request) (interface{}, error) {
@@ -76,7 +77,7 @@ func GetUsers(r tx.Request) (interface{}, error) {
 		return nil, errors.Wrap(err, "Invalid form")
 	}
 
-	return r.Tx.Users(p.Count, p.Page)
+	return r.Tx.SearchUsers(p.Query, p.Count, p.Page)
 }
 
 func GetUser(r tx.Request) (interface{}, error) {
@@ -114,7 +115,18 @@ func PatchUser(r tx.Request) (interface{}, error) {
 }
 
 func DeleteUser(r tx.Request) (interface{}, error) {
-	return nil, r.Tx.DeleteUser(username(r))
+	var username = username(r)
+
+	if err := r.Tx.DeleteUser(username); err != nil {
+		return nil, err
+	}
+
+	// If we're deleting the current user, then delete the session cookie too.
+	if r.Tx.Session.Username == username {
+		r.SetSession(nil)
+	}
+
+	return nil, nil
 }
 
 func GetCurrentSession(r tx.Request) (interface{}, error) {

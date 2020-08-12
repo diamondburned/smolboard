@@ -93,6 +93,8 @@ func (r *Request) FlushCookies() {
 		if cookie.Name == "token" && cookie.Value == "" {
 			http.SetCookie(r.Writer, &http.Cookie{
 				Name:    "username",
+				Value:   "",
+				Path:    "/",
 				Expires: time.Unix(0, 0), // set to the past
 			})
 		}

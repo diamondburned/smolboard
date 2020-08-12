@@ -1,0 +1,31 @@
+.page-buttons {
+	display: flex;
+	align-items: center;
+	flex-direction: row;
+}
+
+.page-buttons > * {
+    white-space: nowrap;
+    padding: calc(0.5 * var(--universal-padding)) calc(1.5 * var(--universal-padding));
+}
+
+.page-buttons button.next-page,
+.page-buttons button.last-page {
+	flex: 1;
+	color: var(--fore-color);
+}
+
+.page-buttons button:disabled {
+	color: var(--secondary-fore-color);
+}
+
+.page-buttons > .page-input {
+	color: var(--secondary-fore-color);
+    border: none;
+    background: inherit;
+
+	padding-right: 0;
+
+    width: 20%;
+    text-align: right;
+}

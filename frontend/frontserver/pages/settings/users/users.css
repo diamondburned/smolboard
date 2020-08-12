@@ -1,0 +1,23 @@
+main > div.users > div.header {
+	display: flex;
+	flex-flow: row wrap;
+	justify-content: space-between;
+}
+
+main > div.users > div.header h3,
+main > div.users > div.header form.user-search {
+	margin: auto calc(2 * var(--universal-margin));
+}
+
+main > div.users > div.header form.user-search > * {
+    margin: 0;
+}
+
+main > div.users > form.paginator {
+    display: flex;
+    justify-content: center;
+}
+
+main > div.users > div.user-list {
+    margin-top: calc(0.5 * var(--universal-margin));
+}

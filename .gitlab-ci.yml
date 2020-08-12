@@ -5,7 +5,7 @@
     },
     "before_script": [
         "apk add git",
-        "apk add gcc musl-dev" # for sqlite3
+        "apk add gcc musl-dev jpeg sqlite"
     ],
     "stages": [
         "build",

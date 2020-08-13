@@ -8,13 +8,14 @@ import (
 	"net/url"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/andybalholm/brotli"
 	"github.com/diamondburned/smolboard/frontend/frontserver"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
+
+	toml "github.com/pelletier/go-toml"
 )
 
 type Config struct {

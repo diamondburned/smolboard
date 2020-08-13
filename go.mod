@@ -5,7 +5,6 @@ go 1.14
 replace github.com/bbrks/go-blurhash => github.com/diamondburned/go-blurhash v0.0.0-20200729185525-9fa9a8820d7f
 
 require (
-	github.com/BurntSushi/toml v0.3.1
 	github.com/andybalholm/brotli v1.0.0
 	github.com/bbrks/go-blurhash v0.0.0-20190629155354-b1b1c817265b
 	github.com/bwmarrin/snowflake v0.3.0

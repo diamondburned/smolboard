@@ -5,7 +5,7 @@
     },
     "before_script": [
         "apk add git",
-        "apk add gcc musl-dev libjpeg sqlite-static"
+        "apk add gcc musl-dev libjpeg-turbo-dev sqlite-static"
     ],
     "stages": [
         "build",

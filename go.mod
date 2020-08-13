@@ -19,8 +19,7 @@ require (
 	github.com/google/btree v1.0.0 // indirect
 	github.com/gorilla/schema v1.1.0
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/lu4p/binclude v0.0.0-20200813015948-faabd406ef8d
-	github.com/markbates/pkger v0.17.0
+	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-shellwords v1.0.10
 	github.com/mattn/go-sqlite3 v1.14.0
 	github.com/mileusna/useragent v1.0.1
@@ -40,4 +39,5 @@ require (
 	golang.org/x/sys v0.0.0-20200724161237-0e2f3a69832c // indirect
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/appengine v1.6.6 // indirect
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )

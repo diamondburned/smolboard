@@ -142,14 +142,14 @@ func (s *Session) PostSearch(q string, count, page int) (p smolboard.SearchResul
 	})
 }
 
-// PostDirectURL returns the direct URL to the post's content.
-func (s *Session) PostDirectURL(post smolboard.Post) string {
-	return fmt.Sprintf("%s/%s/%s", s.Client.Endpoint(), "images", post.Filename())
+// PostDirectPath returns the direct path to the post's content.
+func (s *Session) PostDirectPath(post smolboard.Post) string {
+	return fmt.Sprintf("/api/v1/images/%s", post.Filename())
 }
 
-// PostThumbURL returns the JPEG URL to the thumbnail of the given post.
-func (s *Session) PostThumbURL(post smolboard.Post) string {
-	return fmt.Sprintf("%s/%s/%s/thumb.jpg", s.Client.Endpoint(), "images", post.Filename())
+// PostThumbPathRL returns the JPEG path to the thumbnail of the given post.
+func (s *Session) PostThumbPath(post smolboard.Post) string {
+	return fmt.Sprintf("/api/v1/images/%s/thumb.jpg", post.Filename())
 }
 
 // DeletePost deletes the given post.

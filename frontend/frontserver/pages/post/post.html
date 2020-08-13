@@ -53,7 +53,7 @@
 					</a>
 	
 					<a role="button" class="original-image primary small"
-					   href="{{ $.Session.PostDirectURL .Post }}"
+					   href="{{ $.Session.PostDirectPath .Post }}"
 					>
 						<span class="icon-link secondary inverse"></span>
 						<span>Original Image</span>
@@ -127,11 +127,11 @@
 	
 				{{ if (isImage .ContentType) }}
 				<img {{ $.ImageSizeAttr . }}
-					 src="{{ $.Session.PostDirectURL . }}"
-					 style="background-image: url('{{ $.Session.PostThumbURL . }}')" />
+					 src="{{ $.Session.PostDirectPath . }}"
+					 style="background-image: url('{{ $.Session.PostThumbPath . }}')" />
 	
 				{{ else if (isVideo .ContentType) }}
-				<video preload="all" controls src="{{ $.Session.PostDirectURL . }}#t=0.1" />
+				<video preload="all" controls src="{{ $.Session.PostDirectPath . }}#t=0.1" />
 	
 				{{ else }}
 				<div>

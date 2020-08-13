@@ -99,7 +99,7 @@ func (r renderCtx) InlineImage(p smolboard.Post) interface{} {
 		return template.URL(h)
 	}
 
-	return r.Session.PostThumbURL(p)
+	return r.Session.PostThumbPath(p)
 }
 
 func Mount(muxer render.Muxer) http.Handler {
@@ -128,7 +128,7 @@ func pageRender(r *render.Request) (render.Render, error) {
 
 	// Push thumbnails before page load.
 	for _, post := range p.Posts {
-		r.Push(r.Session.PostThumbURL(post))
+		r.Push(r.Session.PostThumbPath(post))
 	}
 
 	var renderCtx = renderCtx{

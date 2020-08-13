@@ -126,7 +126,7 @@ func pageRender(r *render.Request) (render.Render, error) {
 	return render.Render{
 		Title:       poster,
 		Description: ellipsize(description.String()),
-		ImageURL:    r.Session.PostDirectURL(p.Post),
+		ImageURL:    r.Session.PostDirectPath(p.Post),
 		Body:        tmpl.Render(renderCtx),
 	}, nil
 }

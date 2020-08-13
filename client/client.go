@@ -135,8 +135,10 @@ func NewSocketClientFromRequest(socket string, r *http.Request) (*Client, error)
 	}
 
 	if referer, err := url.Parse(r.Header.Get("Referer")); err == nil {
-		u.Scheme = referer.Scheme
-		u.Host = referer.Host
+		if referer.Host != "" {
+			u.Scheme = referer.Scheme
+			u.Host = referer.Host
+		}
 	}
 
 	c, err := NewSocketClient(u, socket)

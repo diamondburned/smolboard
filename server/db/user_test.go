@@ -121,7 +121,7 @@ func TestUser(t *testing.T) {
 			}
 
 			err := tx.PromoteUser("かぐやありかわ", smolboard.PermissionOwner)
-			if !errors.Is(err, smolboard.ErrActionNotPermitted) {
+			if !errors.Is(err, smolboard.ErrInvalidPermission) {
 				t.Fatal("Unexpected error while trying to promote user to owner:", err)
 			}
 		})
@@ -250,8 +250,8 @@ func TestAdminDelete(t *testing.T) {
 	user := test.begin(t, d, owner)
 
 	for _, lower := range test.passPerms {
-		// Ignore owner.
-		if lower == smolboard.PermissionOwner {
+		// Ignore owner and guest.
+		if lower == smolboard.PermissionOwner || lower == smolboard.PermissionGuest {
 			continue
 		}
 

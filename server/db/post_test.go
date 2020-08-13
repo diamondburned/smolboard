@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"testing"
 
@@ -59,7 +58,6 @@ func TestPosts(t *testing.T) {
 		var total int
 
 		for i := uint(0); ; i++ {
-			log.Println("on page", i)
 			// Ensure proper pagination. Get first page.
 			p, err := tx.Posts(10, i)
 			if err != nil {

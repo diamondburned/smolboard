@@ -6,17 +6,14 @@ import (
 	"unicode/utf8"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
-	"github.com/markbates/pkger"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/components/errbox/errbox.css"),
-	)
+	render.RegisterCSSFile("components/errbox/errbox.css")
 }
 
 var Component = render.Component{
-	Template: pkger.Include("/frontend/frontserver/components/errbox/errbox.html"),
+	Template: "components/errbox/errbox.html",
 	Functions: map[string]interface{}{
 		"minifyError": MinifyError,
 	},

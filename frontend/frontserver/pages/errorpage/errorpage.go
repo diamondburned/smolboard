@@ -8,17 +8,14 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/nav"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
-	"github.com/markbates/pkger"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/errorpage/errorpage.css"),
-	)
+	render.RegisterCSSFile("pages/errorpage/errorpage.css")
 }
 
 var tmpl = render.BuildPage("home", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/errorpage/errorpage.html"),
+	Template: "pages/errorpage/errorpage.html",
 	Components: map[string]render.Component{
 		"nav":    nav.Component,
 		"footer": footer.Component,

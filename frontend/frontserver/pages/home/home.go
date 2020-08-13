@@ -2,7 +2,6 @@ package home
 
 import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
-	"github.com/markbates/pkger"
 
 	// Components
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
@@ -10,13 +9,11 @@ import (
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/home/home.css"),
-	)
+	render.RegisterCSSFile("pages/home/home.css")
 }
 
 var tmpl = render.BuildPage("home", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/home/home.html"),
+	Template: "pages/home/home.html",
 	Components: map[string]render.Component{
 		"search": search.Component,
 		"footer": footer.Component,

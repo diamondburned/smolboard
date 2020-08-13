@@ -11,18 +11,15 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
-	"github.com/markbates/pkger"
 	"github.com/pkg/errors"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/settings/tokens/tokens.css"),
-	)
+	render.RegisterCSSFile("pages/settings/tokens/tokens.css")
 }
 
 var tmpl = render.BuildPage("cpanel", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/settings/tokens/tokens.html"),
+	Template: "pages/settings/tokens/tokens.html",
 	Components: map[string]render.Component{
 		"nav":    nav.Component,
 		"footer": footer.Component,

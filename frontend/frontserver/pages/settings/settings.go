@@ -14,20 +14,17 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
-	"github.com/markbates/pkger"
 	"github.com/pkg/errors"
 
 	ua "github.com/mileusna/useragent"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/settings/settings.css"),
-	)
+	render.RegisterCSSFile("pages/settings/settings.css")
 }
 
 var tmpl = render.BuildPage("cpanel", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/settings/settings.html"),
+	Template: "pages/settings/settings.html",
 	Components: map[string]render.Component{
 		"nav":    nav.Component,
 		"footer": footer.Component,

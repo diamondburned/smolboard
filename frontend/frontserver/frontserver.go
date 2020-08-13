@@ -13,6 +13,8 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 )
 
+//go:generate go run github.com/phogolabs/parcello/cmd/parcello -r -i *.go
+
 type FrontConfig struct {
 	render.Config
 }

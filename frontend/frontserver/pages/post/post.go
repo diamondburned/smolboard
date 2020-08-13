@@ -13,18 +13,15 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
-	"github.com/markbates/pkger"
 	"github.com/pkg/errors"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/post/post.css"),
-	)
+	render.RegisterCSSFile("pages/post/post.css")
 }
 
 var tmpl = render.BuildPage("post", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/post/post.html"),
+	Template: "pages/post/post.html",
 	Components: map[string]render.Component{
 		"nav":    nav.Component,
 		"footer": footer.Component,

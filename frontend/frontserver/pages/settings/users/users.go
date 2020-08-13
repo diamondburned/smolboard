@@ -10,18 +10,15 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
-	"github.com/markbates/pkger"
 	"github.com/pkg/errors"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/settings/users/users.css"),
-	)
+	render.RegisterCSSFile("pages/settings/users/users.css")
 }
 
 var tmpl = render.BuildPage("home", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/settings/users/users.html"),
+	Template: "pages/settings/users/users.html",
 	Components: map[string]render.Component{
 		"pager":  pager.Component,
 		"nav":    nav.Component,

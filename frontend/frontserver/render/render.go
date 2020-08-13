@@ -11,7 +11,7 @@ import (
 	"github.com/diamondburned/smolboard/client"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/markbates/pkger"
+	"github.com/phogolabs/parcello"
 	"github.com/pkg/errors"
 )
 
@@ -158,6 +158,8 @@ type Mux struct {
 }
 
 func newMux() *chi.Mux {
+	ensureInit()
+
 	r := chi.NewMux()
 	r.Use(ThemeM)
 	r.Use(middleware.StripSlashes)
@@ -165,10 +167,7 @@ func newMux() *chi.Mux {
 	r.With(middleware.NoCache).Post("/theme", handleSetTheme)
 	r.Route("/static", func(r chi.Router) {
 		r.Get("/components.css", componentsCSSHandler)
-		r.Mount("/", http.StripPrefix(
-			"/static",
-			http.FileServer(pkger.Dir("/frontend/frontserver/static/")),
-		))
+		r.Mount("/", http.StripPrefix("/static", http.FileServer(parcello.Dir("static/"))))
 	})
 
 	return r

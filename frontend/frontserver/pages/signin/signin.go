@@ -8,18 +8,15 @@ import (
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
 	"github.com/go-chi/chi"
-	"github.com/markbates/pkger"
 	"github.com/pkg/errors"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/pages/signin/signin.css"),
-	)
+	render.RegisterCSSFile("pages/signin/signin.css")
 }
 
 var tmpl = render.BuildPage("signin", render.Page{
-	Template: pkger.Include("/frontend/frontserver/pages/signin/signin.html"),
+	Template: "pages/signin/signin.html",
 	Components: map[string]render.Component{
 		"footer": footer.Component,
 		"errbox": errbox.Component,

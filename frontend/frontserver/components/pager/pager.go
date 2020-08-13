@@ -5,19 +5,16 @@ import (
 	"math"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
-	"github.com/markbates/pkger"
 )
 
 func init() {
-	render.RegisterCSSFile(
-		pkger.Include("/frontend/frontserver/components/pager/pager.css"),
-	)
+	render.RegisterCSSFile("components/pager/pager.css")
 }
 
 const PageSize = 25
 
 var Component = render.Component{
-	Template: pkger.Include("/frontend/frontserver/components/pager/pager.html"),
+	Template: "components/pager/pager.html",
 	Functions: template.FuncMap{
 		"numPages": func(max int) int {
 			return int(math.Ceil(float64(max) / PageSize))

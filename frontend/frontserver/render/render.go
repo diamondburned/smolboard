@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -86,6 +87,13 @@ func (r *Request) FlushCookies() {
 	// var now = time.Now()
 
 	for _, cookie := range r.Session.Client.Cookies() {
+		if origin := r.Header.Get("Origin"); origin != "" {
+			u, err := url.Parse(origin)
+			if err == nil {
+				cookie.Domain = u.Hostname()
+			}
+		}
+
 		http.SetCookie(r.Writer, cookie)
 
 		// Is this a token cookie? Is it invalidated? If yes, then we should
@@ -239,6 +247,7 @@ func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) (*Request, erro
 			http.SetCookie(w, &http.Cookie{
 				Name:  "username",
 				Value: u.Username,
+				Path:  "/",
 				// We're not setting an Expiry here so the cookie will expire
 				// when the browser exits.
 			})

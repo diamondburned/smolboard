@@ -30,8 +30,35 @@ var tmpl = render.BuildPage("home", render.Page{
 type renderCtx struct {
 	render.CommonCtx
 	smolboard.UserList
+	Me    smolboard.UserPart
 	Query string // ?q=X
 	Page  int    // ?p=X
+}
+
+// AllowedPromotes returns the allowed permissions the current user can promote
+// the target user to.
+func (r renderCtx) AllowedPromotes(target smolboard.UserPart) []smolboard.Permission {
+	// Fast path.
+	if r.Me.Permission < target.Permission {
+		return nil
+	}
+	if r.Me.Username == target.Username {
+		return nil
+	}
+
+	var self = r.Me.Username == target.Username
+	var allp = smolboard.AllPermissions()
+
+	// Skip guest and owner.
+	allp = allp[1 : len(allp)-1]
+
+	for i, perm := range allp {
+		if err := r.Me.Permission.HasPermOverUser(perm, target.Permission, self); err != nil {
+			return allp[:i]
+		}
+	}
+
+	return allp
 }
 
 func Mount(muxer render.Muxer) http.Handler {
@@ -40,6 +67,7 @@ func Mount(muxer render.Muxer) http.Handler {
 
 	mux.Route("/{username}", func(mux chi.Router) {
 		mux.Post("/delete", muxer.M(deleteUser))
+		mux.Post("/promote", muxer.M(promoteUser))
 	})
 	return mux
 }
@@ -58,12 +86,21 @@ func renderPage(r *render.Request) (render.Render, error) {
 
 	u, err := r.Session.SearchUsers(query, pager.PageSize, page-1)
 	if err != nil {
-		return render.Empty, err
+		return render.Empty, errors.Wrap(err, "Failed to get users")
 	}
+
+	m, err := r.Session.Me()
+	if err != nil {
+		return render.Empty, errors.Wrap(err, "Failed to get self")
+	}
+
+	// Use the username from the API as much as possible.
+	r.CommonCtx.Username = m.Username
 
 	var renderCtx = renderCtx{
 		CommonCtx: r.CommonCtx,
 		UserList:  u,
+		Me:        m,
 		Page:      page,
 		Query:     query,
 	}
@@ -76,6 +113,22 @@ func renderPage(r *render.Request) (render.Render, error) {
 
 func deleteUser(r *render.Request) (render.Render, error) {
 	if err := r.Session.DeleteUser(chi.URLParam(r.Request, "username")); err != nil {
+		return render.Empty, err
+	}
+
+	r.Redirect(r.Referer(), http.StatusSeeOther)
+	return render.Empty, nil
+}
+
+func promoteUser(r *render.Request) (render.Render, error) {
+	var username = chi.URLParam(r.Request, "username")
+
+	p, err := strconv.Atoi(r.FormValue("p"))
+	if err != nil {
+		return render.Empty, errors.Wrap(err, "Failed to parse permission")
+	}
+
+	if err := r.Session.SetUserPermission(username, smolboard.Permission(p)); err != nil {
 		return render.Empty, err
 	}
 

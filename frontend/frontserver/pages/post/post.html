@@ -22,12 +22,18 @@
 							   formaction="/posts"
 							   name="q" value="{{ .TagName }}"
 						/>
+
+						{{ if $.CanChangePost }}
 						<button type="submit" class="tag delete-tag"
 								name="tag" value="{{ .TagName }}"
 								formaction="/posts/{{$.Post.ID}}/untag" formmethod="post"
 						>
 							×
 						</button>
+						{{ else }}
+						<span></span>
+						{{ end }}
+
 						{{ end }}
 					</div>
 					{{ else }}
@@ -103,19 +109,17 @@
 					</form>
 					{{ end }}
 				</div>
+				{{ end }}
 	
+				{{ with $.AllowedSetPerms }}
 				<div class="post-promote sensitive">
 					<legend>Permission</legend>
 	
-					<form class="seamless" action="/posts/{{.ID}}/permission" method="post">
-						{{ range $i, $permission := allPermissions }}
-						{{ if ($.CanSetPerm $permission) }}
-						<button type="submit" class="small"
-								name="p" value="{{ $permission.StringInt }}"
-						>
-							{{ $permission }}
+					<form class="seamless" action="/posts/{{$.Post.ID}}/permission" method="post">
+						{{ range . }}
+						<button type="submit" class="small" name="p" value="{{ .StringInt }}">
+							{{ . }}
 						</button>
-						{{ end }}
 						{{ end }}
 					</form>
 				</div>

@@ -3,7 +3,6 @@ package smolboard
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -53,7 +52,7 @@ type ErrResponse struct {
 
 type Permission int8
 
-var ErrInvalidPermission = errors.New("invalid permission")
+var ErrInvalidPermission = httperr.New(400, "invalid permission")
 
 const (
 	// PermissionGuest is the zero-value of permission, which indicates a guest.
@@ -127,17 +126,17 @@ func (p Permission) HasPermission(min Permission, inclusive bool) error {
 	return ErrActionNotPermitted
 }
 
-func (p Permission) IsUserOrHasPermOver(min, target Permission, self, targetUser string) error {
-	if self == targetUser {
+func (p Permission) IsUserOrHasPermOver(min, target Permission, isSelf bool) error {
+	if isSelf {
 		return nil
 	}
-	return p.HasPermOverUser(min, target, self, targetUser)
+	return p.HasPermOverUser(min, target, isSelf)
 }
 
 // HasPermOverUser returns nil if the current user (self) has permission over
 // the target user with the given lowest permission required. If target is -1,
 // then PermissionAdministrator is assumed. This is done for deleted accounts.
-func (p Permission) HasPermOverUser(min, target Permission, self, targetUser string) error {
+func (p Permission) HasPermOverUser(min, target Permission, isSelf bool) error {
 	// Is this a valid permission?
 	if min < PermissionGuest || min > PermissionOwner {
 		return ErrInvalidPermission
@@ -151,7 +150,7 @@ func (p Permission) HasPermOverUser(min, target Permission, self, targetUser str
 
 	// If the target user is the current user and the target permission is the
 	// same or lower than the target, then allow.
-	if self == targetUser && p >= min {
+	if isSelf && p >= min {
 		return nil
 	}
 
@@ -262,24 +261,24 @@ type PostTag struct {
 	Count   int    `db:"-"       json:"count,omitempty"`
 }
 
-const MaxTagLen = 256
+const MaxTagLen = 128
 
 var (
 	ErrEmptyTag        = httperr.New(400, "empty tag not allowed")
 	ErrIllegalTag      = httperr.New(400, "tag contains illegal character")
-	ErrTagTooLong      = httperr.New(400, "tag is too long")
 	ErrTagAlreadyAdded = httperr.New(400, "tag is already added")
+	ErrTagTooLong      = httperr.New(400, fmt.Sprintf("tag is too long (max %d)", MaxTagLen))
 )
 
 // TagIsValid returns nil if the tag is valid else an error. A tag is invalid if
-// it's empty, it's longer than 256 bytes, it's prefixed with an at sign "@" or
+// it's empty, it's longer than 128 bytes, it's prefixed with an at sign "@" or
 // it contains anything not a graphical character defined by the Unicode
 // standards.
 func TagIsValid(tagName string) error {
 	if tagName == "" {
 		return ErrEmptyTag
 	}
-	if len(tagName) > 256 {
+	if len(tagName) > MaxTagLen {
 		return ErrTagTooLong
 	}
 
@@ -496,7 +495,7 @@ func (u UserPart) Joined() time.Time {
 // in sync with the backend functions.
 func (u UserPart) CanChangePost(p Post) error {
 	return u.Permission.IsUserOrHasPermOver(
-		PermissionAdministrator, p.Permission, u.Username, p.GetPoster(),
+		PermissionAdministrator, p.Permission, u.Username == p.GetPoster(),
 	)
 }
 
@@ -508,7 +507,7 @@ func (u UserPart) CanSetPostPermission(p PostExtended, target Permission) error 
 		posterPerm = p.PosterUser.Permission
 	}
 
-	return u.Permission.HasPermOverUser(target, posterPerm, u.Username, p.GetPoster())
+	return u.Permission.HasPermOverUser(target, posterPerm, u.Username == p.GetPoster())
 }
 
 type UserList struct {

@@ -21,12 +21,10 @@ func Mount(m tx.Middlewarer) http.Handler {
 
 	mux.Route("/{username}", func(r chi.Router) {
 		r.Get("/", m(GetUser))
-		r.Patch("/", m(PatchUser)) // only @me
+		r.Patch("/", m(PatchMe)) // only @me
 		r.Delete("/", m(DeleteUser))
 
-		r.Route("/permission", func(r chi.Router) {
-			r.Patch("/", m(PromoteUser))
-		})
+		r.Patch("/permission", m(PromoteUser))
 
 		r.Route("/sessions", func(r chi.Router) {
 			r.Get("/", m(GetSessions))
@@ -88,7 +86,7 @@ type PatchQuery struct {
 	Password string `schema:"password"`
 }
 
-func PatchUser(r tx.Request) (interface{}, error) {
+func PatchMe(r tx.Request) (interface{}, error) {
 	// Only allow @me.
 	if username(r) != r.Tx.Session.Username {
 		return nil, smolboard.ErrActionNotPermitted

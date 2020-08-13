@@ -38,7 +38,7 @@
 									<span id="username">{{ $user.Username }}</span>
 
 									{{ with (unixNano $user.JoinTime) }}
-									<span>Joined at</span>
+									<span>Joined</span>
 									<time id="join" datetime="{{ htmlTime . }}">
 										{{ humanizeTime . }}
 									</time>
@@ -48,17 +48,43 @@
 									<span id="permission">{{ $user.Permission }}</span>
 								</div>
 
-								<form class="actions section seamless">
+								<div class="actions section">
 									<legend>Actions</legend>
 
-									<button type="submit" class="delete-user small secondary"
-											formmethod="post"
-											formaction="/settings/users/{{$user.Username}}/delete"
+									<form class="seamless" method="get" action="/posts">
+										<input type="text" style="display: none"
+											   name="q" value="@{{$user.Username}}">
+
+										<button type="submit" class="small">
+											<span class="icon-user secondary"></span>
+											<span>View Posts</span>
+										</button>
+									</form>
+
+									{{ with ($.AllowedPromotes $user) }}
+									<form class="permissions seamless"
+										  method="post"
+										  action="/settings/users/{{$user.Username}}/promote"
 									>
-										<span class="icon-alert secondary inverse"></span>
-										<span>Delete User</span>
-									</button>
-								</form>
+										<select id="permission" name="p">
+											{{ range . }}
+											<option value="{{ .StringInt }}">{{ . }}</option>
+											{{ end }}
+										</select>
+										<button type="submit" class="small">Set Permission</button>
+									</form>
+									{{ end }}
+
+									<form class="seamless delete-user"
+										  method="post"
+										  action="/settings/users/{{$user.Username}}/delete"
+									>
+										<button type="submit" class="delete-user small secondary">
+											<span class="icon-alert secondary inverse"></span>
+											<span>Delete User</span>
+										</button>
+									</form>
+								</div>
 							</div>
 						</div>
 					</div>

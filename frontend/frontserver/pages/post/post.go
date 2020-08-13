@@ -45,16 +45,25 @@ func genericMIME(mime string) string {
 
 type renderCtx struct {
 	render.CommonCtx
-	User   smolboard.UserPart
-	Post   smolboard.PostExtended
-	Poster string
+	User          smolboard.UserPart
+	Post          smolboard.PostExtended
+	Poster        string
+	CanChangePost bool
 }
 
-func (r renderCtx) CanChangePost() bool {
-	return r.User.CanChangePost(r.Post.Post) == nil
+func (r renderCtx) AllowedSetPerms() []smolboard.Permission {
+	var allPerms = smolboard.AllPermissions()
+
+	for i, perm := range allPerms {
+		if !r.canSetPerm(perm) {
+			return allPerms[:i]
+		}
+	}
+
+	return allPerms
 }
 
-func (r renderCtx) CanSetPerm(p smolboard.Permission) bool {
+func (r renderCtx) canSetPerm(p smolboard.Permission) bool {
 	return r.User.CanSetPostPermission(r.Post, p) == nil
 }
 
@@ -108,18 +117,22 @@ func pageRender(r *render.Request) (render.Render, error) {
 	}
 
 	var renderCtx = renderCtx{
-		CommonCtx: r.CommonCtx,
-		User:      u,
-		Post:      p,
-		Poster:    poster,
+		CommonCtx:     r.CommonCtx,
+		User:          u,
+		Post:          p,
+		Poster:        poster,
+		CanChangePost: u.CanChangePost(p.Post) == nil,
 	}
 
 	description := strings.Builder{}
 	description.Grow(128)
 
-	for _, tag := range p.Tags {
+	for i, tag := range p.Tags {
 		if description.WriteString(tag.TagName); description.Len() > 128 {
 			break
+		}
+		if i < len(p.Tags)-1 {
+			description.WriteString(", ")
 		}
 	}
 

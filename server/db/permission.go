@@ -69,5 +69,5 @@ func (d *Transaction) HasPermOverUser(min smolboard.Permission, user string) err
 	// Accept a -1 permission.
 	t, _ := d.permission(user)
 
-	return p.HasPermOverUser(min, t, d.Session.Username, user)
+	return p.HasPermOverUser(min, t, d.Session.Username == user)
 }

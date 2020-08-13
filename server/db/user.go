@@ -113,6 +113,10 @@ func (d *Transaction) SearchUsers(qs string, count, page uint) (smolboard.UserLi
 			return smolboard.NoUsers, errors.Wrap(err, "Failed to scan user")
 		}
 
+		if d.config.Owner == u.Username {
+			u.Permission = smolboard.PermissionOwner
+		}
+
 		list.Users = append(list.Users, u.UserPart)
 	}
 
@@ -152,17 +156,22 @@ func (d *Transaction) Me() (*smolboard.UserPart, error) {
 
 // PromoteUser promotes or demotes someone else.
 func (d *Transaction) PromoteUser(username string, p smolboard.Permission) error {
+	// You can't change your own permission.
+	if d.Session.Username == username {
+		return smolboard.ErrActionNotPermitted
+	}
+
 	// No inclusivity, as the current user can only promote to the permission
 	// below them. This way, only the owner can promote users to admins, and
 	// only admins can promote users to trusted. Trusted users can't promote.
-	if err := d.HasPermission(p, false); err != nil {
+	if err := d.HasPermOverUser(p, username); err != nil {
 		return err
 	}
 
 	// The larger-than check is redundant, as nobody should ever have a higher
 	// permission than Owner, and Owner cannot make anyone else Owner, as
 	// HasPermission checks for less-than.
-	if p < 0 || p > smolboard.PermissionAdministrator {
+	if p < smolboard.PermissionUser || p > smolboard.PermissionAdministrator {
 		return smolboard.ErrInvalidPermission
 	}
 

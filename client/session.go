@@ -90,7 +90,17 @@ func (s *Session) DeleteMe() error {
 
 // User gets a user with the given username.
 func (s *Session) User(username string) (u smolboard.UserPart, err error) {
-	return u, s.Client.Get("/users/"+url.PathEscape(username), &u, nil)
+	return u, s.Client.Get(fmt.Sprintf("/users/%s", url.PathEscape(username)), &u, nil)
+}
+
+// SetUserPermission sets the given user's permission.
+func (s *Session) SetUserPermission(username string, p smolboard.Permission) error {
+	return s.Client.Request(
+		"PATCH",
+		fmt.Sprintf("/users/%s/permission", url.PathEscape(username)),
+		nil,
+		url.Values{"p": {p.StringInt()}},
+	)
 }
 
 // Users gets a paginated list of users. The default value for count is 50. This
@@ -144,12 +154,12 @@ func (s *Session) PostSearch(q string, count, page int) (p smolboard.SearchResul
 
 // PostDirectPath returns the direct path to the post's content.
 func (s *Session) PostDirectPath(post smolboard.Post) string {
-	return fmt.Sprintf("/api/v1/images/%s", post.Filename())
+	return fmt.Sprintf("/api/v1/images/%s", url.PathEscape(post.Filename()))
 }
 
 // PostThumbPathRL returns the JPEG path to the thumbnail of the given post.
 func (s *Session) PostThumbPath(post smolboard.Post) string {
-	return fmt.Sprintf("/api/v1/images/%s/thumb.jpg", post.Filename())
+	return fmt.Sprintf("/api/v1/images/%s/thumb.jpg", url.PathEscape(post.Filename()))
 }
 
 // DeletePost deletes the given post.

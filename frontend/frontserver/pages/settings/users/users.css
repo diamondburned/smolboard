@@ -10,14 +10,52 @@ main > div.users > div.header form.user-search {
 }
 
 main > div.users > div.header form.user-search > * {
-    margin: 0;
+	margin: 0;
 }
 
 main > div.users > form.paginator {
-    display: flex;
-    justify-content: center;
+	display: flex;
+	justify-content: center;
 }
 
 main > div.users > div.user-list {
-    margin-top: calc(0.5 * var(--universal-margin));
+	margin-top: calc(0.5 * var(--universal-margin));
+}
+
+main > div.users > div.user-list div[role=dialog] > div.card > h3 {
+	margin: calc(2 * var(--universal-padding));
+}
+
+main > div.users > div.user-list div[role=dialog] > div.card > div.table {
+	padding: calc(2 * var(--universal-padding));
+	padding-top: 0;
+}
+
+main > div.users > div.user-list div[role=dialog] div.actions > * {
+	display: flex;
+	flex-direction: column;
+}
+
+main > div.users > div.user-list div[role=dialog] div.actions > form.permissions {
+    flex-direction: row;
+}
+
+main > div.users > div.user-list div[role=dialog] div.actions > form.permissions > * {
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+main > div.users > div.user-list div[role=dialog] div.actions > form.permissions > select {
+    flex: 1;
+    margin-top:   var(--universal-margin);
+    margin-left:  var(--universal-margin);
+    margin-right: 0;
+}
+
+main > div.users > div.user-list div[role=dialog] div.actions > form:not(:last-child) > * {
+    margin-bottom: 0;
+}
+
+main > div.users > div.user-list div[role=dialog] div.actions button {
+    text-align: start;
 }

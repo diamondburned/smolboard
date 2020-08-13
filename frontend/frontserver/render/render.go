@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/phogolabs/parcello"
-	"github.com/pkg/errors"
 )
 
 // Renderer represents a renderable page.
@@ -208,7 +207,7 @@ func (m *Mux) SetErrorRenderer(r ErrorRenderer) {
 
 // NewRequest makes a new internal request struct. The returned Request pointer
 // is never nil.
-func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) (*Request, error) {
+func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) *Request {
 	c, err := m.client(r)
 	if err != nil {
 		// Host is a constant, so we can panic here.
@@ -233,25 +232,23 @@ func (m *Mux) NewRequest(w http.ResponseWriter, r *http.Request) (*Request, erro
 
 	} else {
 		// Update the username cookie if there's a token cookie.
-		if _, err := r.Cookie("token"); err == nil {
+		if c, err := r.Cookie("token"); err == nil && c.Value != "" {
 			u, err := s.Me()
-			if err != nil {
-				return request, errors.Wrap(err, "Failed to get current user")
+			if err == nil {
+				request.CommonCtx.Username = u.Username
+
+				http.SetCookie(w, &http.Cookie{
+					Name:  "username",
+					Value: u.Username,
+					Path:  "/",
+					// We're not setting an Expiry here so the cookie will
+					// expire when the browser exits.
+				})
 			}
-
-			request.CommonCtx.Username = u.Username
-
-			http.SetCookie(w, &http.Cookie{
-				Name:  "username",
-				Value: u.Username,
-				Path:  "/",
-				// We're not setting an Expiry here so the cookie will expire
-				// when the browser exits.
-			})
 		}
 	}
 
-	return request, nil
+	return request
 }
 
 // M is the middleware wrapper.
@@ -263,10 +260,8 @@ func (m *Mux) M(render Renderer) http.HandlerFunc {
 		var page Render
 
 		// Make a new request. If that works, then we render the page.
-		request, err := m.NewRequest(w, r)
-		if err == nil {
-			page, err = render(request)
-		}
+		request := m.NewRequest(w, r)
+		page, err := render(request)
 
 		// If either of the above failed, then render it as an error page.
 		if err != nil {

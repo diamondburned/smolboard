@@ -160,11 +160,15 @@ type Mux struct {
 func newMux() *chi.Mux {
 	r := chi.NewMux()
 	r.Use(ThemeM)
+	r.Use(middleware.StripSlashes)
 
 	r.With(middleware.NoCache).Post("/theme", handleSetTheme)
 	r.Route("/static", func(r chi.Router) {
 		r.Get("/components.css", componentsCSSHandler)
-		r.Mount("/", http.FileServer(pkger.Dir("/frontend/frontserver/static/")))
+		r.Mount("/", http.StripPrefix(
+			"/static",
+			http.FileServer(pkger.Dir("/frontend/frontserver/static/")),
+		))
 	})
 
 	return r

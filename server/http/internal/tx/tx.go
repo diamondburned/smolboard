@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/diamondburned/smolboard/server/db"
@@ -12,7 +11,6 @@ import (
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
-	"github.com/pkg/errors"
 )
 
 type Request struct {
@@ -89,30 +87,10 @@ func (m Middleware) noAuth(h Handler, w http.ResponseWriter, r *http.Request) {
 
 	// If we have a new session, then send it over.
 	if !s.IsZero() {
-		var domain = r.Host
-
-		// Trim the port if needed.
-		// Trick the URL parser into thinking this is a valid URL by prepending a
-		// valid scheme.
-		if u, err := url.Parse("https://" + r.Host); err == nil {
-			domain = u.Hostname()
-		}
-
-		if origin := r.Header.Get("Origin"); origin != "" {
-			u, err := url.Parse(origin)
-			if err != nil {
-				RenderError(w, errors.Wrap(err, "Invalid origin"))
-				return
-			}
-
-			domain = u.Hostname()
-		}
-
 		http.SetCookie(w, &http.Cookie{
 			Name:     "token",
 			Value:    s.AuthToken,
 			Path:     "/",
-			Domain:   domain,
 			Expires:  time.Unix(0, s.Deadline),
 			SameSite: http.SameSiteStrictMode,
 		})

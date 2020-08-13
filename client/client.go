@@ -127,12 +127,14 @@ func NewHTTPClientFromRequest(backendHTTP string, r *http.Request) (*Client, err
 // NewSocketClientFromRequest creates a new stateful client with cookies and
 // useragents from the request.
 func NewSocketClientFromRequest(socket string, r *http.Request) (*Client, error) {
-	u, err := url.Parse(r.Header.Get("Origin"))
-	if err != nil || u.String() == "" {
-		u = &url.URL{
-			Scheme: "http",
-			Host:   r.Host,
-		}
+	var u = &url.URL{
+		Scheme: "http",
+		Host:   r.Host,
+	}
+
+	if referer, err := url.Parse(r.Header.Get("Referer")); err == nil {
+		u.Scheme = referer.Scheme
+		u.Host = referer.Host
 	}
 
 	c, err := NewSocketClient(u, socket)

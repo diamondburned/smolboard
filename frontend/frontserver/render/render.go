@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -87,13 +86,6 @@ func (r *Request) FlushCookies() {
 	// var now = time.Now()
 
 	for _, cookie := range r.Session.Client.Cookies() {
-		if origin := r.Header.Get("Origin"); origin != "" {
-			u, err := url.Parse(origin)
-			if err == nil {
-				cookie.Domain = u.Hostname()
-			}
-		}
-
 		http.SetCookie(r.Writer, cookie)
 
 		// Is this a token cookie? Is it invalidated? If yes, then we should
@@ -172,10 +164,15 @@ func newMux() *chi.Mux {
 	r.Use(ThemeM)
 	r.Use(middleware.StripSlashes)
 
+	d, err := parcello.Manager.Dir("static/")
+	if err != nil {
+		log.Fatalln("Static not found:", err)
+	}
+
 	r.With(middleware.NoCache).Post("/theme", handleSetTheme)
 	r.Route("/static", func(r chi.Router) {
 		r.Get("/components.css", componentsCSSHandler)
-		r.Mount("/", http.StripPrefix("/static", http.FileServer(parcello.Dir("static/"))))
+		r.Mount("/", http.StripPrefix("/static", http.FileServer(d)))
 	})
 
 	return r

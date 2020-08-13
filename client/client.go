@@ -59,6 +59,7 @@ type Client struct {
 	host   *url.URL
 	agent  string
 	remote string
+	socket bool
 }
 
 // NewClient makes a new client. Host is optional. This client is HTTPS by
@@ -97,8 +98,9 @@ func NewSocketClient(host *url.URL, socket string) (*Client, error) {
 				},
 			},
 		},
-		ctx:  context.Background(),
-		host: host,
+		ctx:    context.Background(),
+		host:   host,
+		socket: true,
 	}
 
 	return client, nil
@@ -208,6 +210,11 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	}
 
 	req.Header.Set("X-Forwarded-For", c.remote)
+
+	// Use HTTP if socket.
+	if c.socket {
+		req.URL.Scheme = "http"
+	}
 
 	r, err := c.Client.Do(req)
 	if err != nil {

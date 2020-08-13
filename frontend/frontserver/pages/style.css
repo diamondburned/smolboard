@@ -134,9 +134,9 @@ div div.table span:nth-child(odd) {
 		margin-left:   var(--universal-margin) !important;
 		margin-bottom: 0 !important;
 	}
-	main.row {
-		flex-flow: column;
-	}
+	/* main.row { */
+	/* 	flex-flow: column; */
+	/* } */
 	aside {
 		/* stretch all the way */
 		max-width: none !important;

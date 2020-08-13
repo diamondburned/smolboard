@@ -88,7 +88,7 @@ main.posts .gallery-post a {
 main.posts .gallery-post a > * {
 	object-fit: cover;
 	height: 200px;
-	width: auto;
+	/* width: auto; */
 	max-width: 350px;
 	background-size: cover;
 	background-repeat: no-repeat;

@@ -103,7 +103,9 @@ func BuildPage(n string, p Page) *Template {
 var index = template.Must(
 	template.
 		New("index").
-		Parse(string(read("/frontend/frontserver/pages/index.html"))),
+		Parse(string(read(
+			pkger.Include("/frontend/frontserver/pages/index.html"),
+		))),
 )
 
 type Template struct {

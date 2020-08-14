@@ -58,7 +58,7 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 	}
 
 	// The worst-case benchmark showed this sqlx.In query building step to take
-	// roughly 51 microseconds (us).
+	// roughly 51 microseconds (us) (outdated).
 
 	// Separate the query header to conditionally
 	header := strings.Builder{}
@@ -82,11 +82,14 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 	if len(pq.Tags) > 0 {
 		// In order to search for tags, we'll need to join these tables.
 		header.WriteString("JOIN posttags ON posttags.postid = posts.id ")
-		// Query using the above joins.
-		footer.WriteString("AND posttags.tagname IN (?) ")
+		// Query using the above joins. The HAVING COUNT query is needed to only
+		// show posts with all the tags searched.
+		footer.WriteString(`
+			AND posttags.tagname IN (?)
+			GROUP BY posts.id HAVING COUNT(posttags.tagname) = ? `)
 		// There used to be a GROUP BY here. However, the GROUP BY messes up the
 		// COUNT and SUM functions.
-		footerArgs = append(footerArgs, pq.Tags)
+		footerArgs = append(footerArgs, pq.Tags, len(pq.Tags))
 	}
 
 	// Build the paginated query.
@@ -95,7 +98,7 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 	query.WriteString(header.String())
 	query.WriteString(footer.String())
 	// Sort the ID decrementally, which is latest first.
-	query.WriteString("GROUP BY posts.id ORDER BY posts.id DESC ")
+	query.WriteString("ORDER BY posts.id DESC ")
 
 	// Append the final pagination query. SQL is dumb and wants LIMIT (offset),
 	// (count) for some reason.

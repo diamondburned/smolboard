@@ -52,7 +52,7 @@ body.post-page {
 	margin: 0;
 }
 
-.post aside .tag-grid input.tag {
+.post aside .tag-grid button.tag.name {
 	padding: 0;
 	text-overflow: ellipsis;
     white-space:   nowrap;

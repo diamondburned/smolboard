@@ -270,6 +270,11 @@ var (
 	ErrTagTooLong      = httperr.New(400, fmt.Sprintf("tag is too long (max %d)", MaxTagLen))
 )
 
+// Escaped returns the escaped tag string.
+func (t PostTag) Escaped() string {
+	return EscapeTag(t.TagName)
+}
+
 // TagIsValid returns nil if the tag is valid else an error. A tag is invalid if
 // it's empty, it's longer than 128 bytes, it's prefixed with an at sign "@" or
 // it contains anything not a graphical character defined by the Unicode
@@ -384,6 +389,14 @@ func ParsePostQuery(q string) (Query, error) {
 
 var wordEscaper = strings.NewReplacer(`'`, `\'`)
 
+// EscapeTag escapes a tag.
+func EscapeTag(name string) string {
+	if strings.IndexFunc(name, unicode.IsSpace) > -1 {
+		return fmt.Sprintf("'%s'", wordEscaper.Replace(name))
+	}
+	return name
+}
+
 // String encodes the parsed PostQuery to a regular string query.
 func (q Query) String() string {
 	var b strings.Builder
@@ -399,13 +412,7 @@ func (q Query) String() string {
 			b.WriteByte(' ')
 		}
 
-		if strings.Contains(tag, " ") {
-			b.WriteByte('\'')
-			wordEscaper.WriteString(&b, tag)
-			b.WriteByte('\'')
-		} else {
-			b.WriteString(tag)
-		}
+		b.WriteString(EscapeTag(tag))
 	}
 
 	return b.String()

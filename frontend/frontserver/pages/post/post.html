@@ -18,10 +18,12 @@
 					<div class="tag-grid">
 						{{ range . }}
 						<p class="tag-count">{{ .Count }}</p>
-						<input type="submit" class="tag"
-							   formaction="/posts"
-							   name="q" value="{{ .TagName }}"
-						/>
+						<button type="submit" class="tag name"
+								formaction="/posts"
+								name="q" value="{{ .Escaped }}"
+						>
+							{{ .TagName }}
+						</button>
 
 						{{ if $.CanChangePost }}
 						<button type="submit" class="tag delete-tag"

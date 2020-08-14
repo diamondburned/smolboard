@@ -132,11 +132,13 @@ func (d *Transaction) posts(pq smolboard.Query, count, page uint) (smolboard.Sea
 		// Build the sum count query.
 		countq := strings.Builder{}
 		countq.WriteString(`
-			SELECT
-				COUNT(DISTINCT posts.id),
-				SUM(posts.size) * COUNT(DISTINCT posts.id) / COUNT(posts.id) `)
+			SELECT SUM(postcount), SUM(postsize) FROM (
+				SELECT
+					COUNT(DISTINCT posts.id) AS postcount,
+					SUM(posts.size) * COUNT(DISTINCT posts.id) / COUNT(posts.id) AS postsize `)
 		countq.WriteString(header.String())
 		countq.WriteString(footer.String())
+		countq.WriteString(")")
 
 		cstring, inargs, err := sqlx.In(countq.String(), footerArgs...)
 		if err != nil {

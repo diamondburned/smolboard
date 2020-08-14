@@ -70,7 +70,8 @@ func NewReader(r io.Reader) (*Reader, error) {
 	buf := bufio.NewReaderSize(r, BufSz)
 
 	h, err := buf.Peek(512)
-	if err != nil {
+	// Ignore EOF errors, as the image may not even be 512 bytes large.
+	if err != nil && err != io.EOF {
 		return nil, errors.Wrap(err, "Failed to peek")
 	}
 

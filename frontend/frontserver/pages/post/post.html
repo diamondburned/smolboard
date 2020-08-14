@@ -82,7 +82,9 @@
 						{{ end }}
 	
 						<span>Poster</span>
-						<span id="poster">{{ .Poster }}</span>
+						<a id="poster" {{ with .Poster }} href="/posts?q=@{{.}}" {{ end }}>
+							{{ $.Poster }}
+						</a>
 	
 						<span>Date</span>
 						{{ with .CreatedTime }}
@@ -91,8 +93,10 @@
 						</time>
 						{{ end }}
 	
+						{{ if $.CanChangePost }}
 						<span>Permission</span>
 						<span id="permission">{{ .Permission }}</span>
+						{{ end }}
 					</div>
 				</div>
 	

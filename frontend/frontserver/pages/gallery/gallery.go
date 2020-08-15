@@ -1,6 +1,7 @@
 package gallery
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -50,6 +51,8 @@ type renderCtx struct {
 	Query string   // ?q=X
 	Page  int      // ?p=X
 	Types []string // MIME types
+
+	DefaultUploadPerm smolboard.Permission
 }
 
 func (r renderCtx) IsMe() bool {
@@ -131,12 +134,24 @@ func pageRender(r *render.Request) (render.Render, error) {
 		r.Push(r.Session.PostThumbPath(post))
 	}
 
+	var defperm = smolboard.PermissionUser
+	if c := r.Cookie("uploadperm"); c != nil {
+		i, err := strconv.Atoi(c.Value)
+		if err == nil {
+			if p := smolboard.Permission(i); p.IsValid() {
+				defperm = p
+			}
+		}
+	}
+
 	var renderCtx = renderCtx{
 		CommonCtx:     r.CommonCtx,
 		SearchResults: p,
 
 		Page:  page,
 		Query: query,
+
+		DefaultUploadPerm: defperm,
 	}
 
 	// If we can upload, then we should get the supported MIME types for the
@@ -171,8 +186,20 @@ func uploader(r *render.Request) (render.Render, error) {
 	if err != nil {
 		return render.Empty, err
 	}
-	// We don't need the posts responded.
-	p.Body.Close()
+	defer p.Body.Close()
+
+	// Shitty hack.
+	var posts []smolboard.Post
+
+	if err := json.NewDecoder(p.Body).Decode(&posts); err != nil {
+		return render.Empty, errors.Wrap(err, "Invalid JSON response from server")
+	}
+
+	if len(posts) > 0 {
+		// Store the uploaded post's permission as a cookie for future
+		// preference.
+		r.SetWeakCookie("uploadperm", posts[0].Permission.StringInt())
+	}
 
 	r.Redirect("/posts", http.StatusSeeOther)
 	return render.Empty, nil

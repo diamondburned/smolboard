@@ -2,9 +2,7 @@ package render
 
 import (
 	"context"
-	"math"
 	"net/http"
-	"time"
 )
 
 type Theme uint8
@@ -93,12 +91,7 @@ func GetTheme(ctx context.Context) Theme {
 }
 
 func SetThemeCookie(w http.ResponseWriter, theme Theme) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "theme",
-		Value:    theme.String(),
-		Expires:  time.Unix(math.MaxInt32, 0),
-		SameSite: http.SameSiteLaxMode,
-	})
+	SetWeakCookie(w, "theme", theme.String())
 }
 
 func handleSetTheme(w http.ResponseWriter, r *http.Request) {

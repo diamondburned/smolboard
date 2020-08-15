@@ -89,6 +89,11 @@ func AllPermissions() []Permission {
 	return permissions
 }
 
+// IsValid returns true if the permission is valid.
+func (p Permission) IsValid() bool {
+	return p > 0 && p < permissionLen
+}
+
 // Int returns the permission as a stringed integer enum. This should only be
 // used for form values and the like.
 func (p Permission) StringInt() string {

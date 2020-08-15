@@ -1,6 +1,6 @@
 # Default fallback config file for smolboard; DO NOT EDIT.
-# Either create a new config.toml and override these options or use the -config
-# flag.
+# Either create a new config.toml and override these options or use the
+# -c/--config flag.
 
 siteName = "smolboard demo"
 

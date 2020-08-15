@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -67,7 +68,7 @@ type Request struct {
 }
 
 // TokenCookie returns the cookie that contains the token if any or nil if
-// none.
+// none. This function searches the cookie from the smolboard client.
 func (r *Request) TokenCookie() *http.Cookie {
 	for _, cookie := range r.Session.Client.Cookies() {
 		if cookie.Name == "token" {
@@ -75,6 +76,32 @@ func (r *Request) TokenCookie() *http.Cookie {
 		}
 	}
 	return nil
+}
+
+// Cookie returns the cookie from the Request. These cookies won't have
+// anything else filled other than the value field.
+func (r *Request) Cookie(name string) *http.Cookie {
+	for _, cookie := range r.Request.Cookies() {
+		if cookie.Name == name {
+			return cookie
+		}
+	}
+	return nil
+}
+
+// SetWeakCookie sets an insecure cookie for user settings.
+func SetWeakCookie(w http.ResponseWriter, k, v string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     k,
+		Value:    v,
+		Expires:  time.Unix(math.MaxInt32, 0),
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// SetWeakCookie calls SetWeakCookie with the writer in Request.
+func (r *Request) SetWeakCookie(k, v string) {
+	SetWeakCookie(r.Writer, k, v)
 }
 
 // FlushCookies dumps all the session state's cookies to the response writer.

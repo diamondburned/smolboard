@@ -96,6 +96,8 @@ func NewSocketClient(host *url.URL, socket string) (*Client, error) {
 				DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 					return dialer.DialContext(ctx, "unix", socket)
 				},
+				DisableKeepAlives: true,
+				ForceAttemptHTTP2: true,
 			},
 		},
 		ctx:    context.Background(),

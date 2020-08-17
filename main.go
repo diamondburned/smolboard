@@ -178,8 +178,8 @@ func main() {
 
 		// Explicitly set up HTTP/2.
 		err = http2.ConfigureServer(&server, &http2.Server{
-			MaxHandlers:          4096,
-			MaxConcurrentStreams: 1024,
+			MaxHandlers:          10240,
+			MaxConcurrentStreams: 4096,
 		})
 
 		if err != nil {

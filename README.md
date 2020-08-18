@@ -23,33 +23,24 @@ a regular user, and the new user will become the owner.
 To disable the frontend and host them separately, run the backend with `-nf` and
 refer to the frontend section below.
 
-### Frontend
-
-smolboard's frontend can also be hosted separately from the backend. To do so,
-compile `./frontend/` and run it separately.
-
-The frontend has a default config at `./frontend/config.default.toml` that one
-needs t
-
-## Server
-
-Root
-
-### Dependencies
+#### Dependencies
 
 - libsqlite3
 - libjpeg
 - FFmpeg (optional)
 - FFprobe (optional)
 
-## Client
+### Frontend
 
-`client/`
+smolboard's frontend can also be hosted separately from the backend. To do so,
+compile `./frontend/` and run it separately.
 
-## Frontend Client
+The frontend has a default config at `./frontend/config.default.toml` that one
+needs to change. Specifically, `listenAddress` should be the HTTP address that
+the frontend should listen on, and `backendAddress` should be the HTTP address
+that points to the backend.
 
-`frontend/` - templating
-
-### Dependencies
+#### Dependencies
 
 - libjpeg
+

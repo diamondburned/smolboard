@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/diamondburned/smolboard/client"
+	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/phogolabs/parcello"
@@ -89,12 +90,30 @@ func (r *Request) Cookie(name string) *http.Cookie {
 	return nil
 }
 
+func (r *Request) CookieValue(name string) string {
+	if c := r.Cookie(name); c != nil {
+		return c.Value
+	}
+	return ""
+}
+
+var (
+	maxExpire  = time.Unix(math.MaxInt32, 0)
+	zeroExpire = time.Unix(0, 0)
+)
+
 // SetWeakCookie sets an insecure cookie for user settings.
 func SetWeakCookie(w http.ResponseWriter, k, v string) {
+	var expires = maxExpire
+	if v == "" {
+		expires = zeroExpire
+	}
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     k,
 		Value:    v,
-		Expires:  time.Unix(math.MaxInt32, 0),
+		Path:     "/",
+		Expires:  expires,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
@@ -121,7 +140,7 @@ func (r *Request) FlushCookies() {
 				Name:    "username",
 				Value:   "",
 				Path:    "/",
-				Expires: time.Unix(0, 0), // set to the past
+				Expires: zeroExpire, // set to the past
 			})
 		}
 	}
@@ -152,6 +171,16 @@ func (r *Request) Redirect(path string, code int) {
 	// Flush the cookies before writing the header.
 	r.FlushCookies()
 	http.Redirect(r.Writer, r.Request, path, code)
+}
+
+func (r *Request) Me() (smolboard.UserPart, error) {
+	u, err := r.Session.Me()
+	if err != nil {
+		return u, err
+	}
+
+	r.Username = u.Username
+	return u, nil
 }
 
 type CommonCtx struct {

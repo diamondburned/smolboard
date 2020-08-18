@@ -428,6 +428,7 @@ func wrapPostErr(r sql.Result, err error, wrap string) error {
 	}
 
 	if r != nil {
+		// PostNotFound is returned for tags that aren't in the post. TODO.
 		count, err := r.RowsAffected()
 		if err == nil && count == 0 {
 			return smolboard.ErrPostNotFound

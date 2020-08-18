@@ -1,0 +1,172 @@
+form.posts-settings div.modperm,
+form.posts-settings div.modsubmit,
+form.posts-settings div.modtags  > div.header,
+form.posts-settings div.modposts > div.header {
+	display: flex;
+	flex-flow: row wrap;
+	align-items: center;
+	justify-content: space-between;
+}
+
+div.modperm   > div.modperm-form,
+div.modsubmit > div.modsubmit-form,
+div.modsubmit > h3,
+div.modtags   > div.header span,
+div.modposts  > div.header h3,
+div.modposts  > div.header div.modposts-search {
+	margin: auto calc(2 * var(--universal-margin));
+}
+
+div.modperm  > div.modperm-form,
+div.modposts > div.header div.modposts-search {
+	display: flex;
+}
+
+div.modsubmit > div.modsubmit-form > .small,
+div.modperm   > div.modperm-form   > .small,
+div.modposts  > div.header div.modposts-search > .small {
+	margin: 0;
+	margin-left: var(--universal-margin);
+}
+
+div.modtags {
+	display: flex;
+	flex-direction: column;
+}
+
+div.modtags div.modtag-grid {
+	margin: 0 calc(2 * var(--universal-margin));
+	display: grid;
+	grid-template-columns: 1fr min-content;
+}
+
+div.modtags input {
+	margin: var(--universal-margin);
+}
+
+div.modposts > div.paginator {
+	display: flex;
+	justify-content: center;
+}
+
+div.modposts-list {
+	margin-top: var(--universal-margin);
+}
+
+div.modposts-list input.modposts-item:checked + label {
+	background-color: var(--table-body-hover-back-color);
+}
+
+div.modposts-list div.info.table {
+	padding: var(--universal-padding) calc(2 * var(--universal-padding));
+}
+
+div.modtags	  div.modtag-grid button.tag,
+div.modposts-list div.info.table button {
+	margin:  0;
+	padding: 0;
+
+	text-overflow: ellipsis;
+	white-space:   nowrap;
+	overflow:	  hidden;
+
+	color: var(--a-link-color);
+	background: inherit;
+	text-align: start;
+}
+
+div.modtags div.modtag-grid button.tag.untag {
+	color: var(--input-invalid-color);
+}
+
+div.modtags	  div.modtag-grid button.tag:hover,
+div.modposts-list div.info.table button:hover {
+	background: inherit;
+	text-decoration: underline;
+}
+
+div.modtags div.modtag-grid button.remove-tag.small {
+	margin:  calc(0.5 * var(--universal-margin));
+	padding: var(--universal-padding);
+	line-height: var(--universal-padding);
+}
+
+div.modposts-list label.modpost-icon {
+	width:  42px;
+	height: 42px;
+
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	padding: 0;
+	cursor:  pointer;
+}
+
+div.modpost-image {
+	display: flex;
+}
+
+div.modposts-post div.section.header {
+	display: flex;
+	justify-content: space-between;
+}
+
+div.modposts-post div.section.header h3 {
+	display: flex;
+	align-items: baseline;
+}
+
+div.modposts-post div.section.header h3 small {
+	margin-left: var(--universal-margin);
+	color: var(--a-link-color);
+}
+
+div.modposts-post div.section.header,
+div.modposts-post div.info.table {
+	overflow: visible;
+}
+
+div.modposts-list img.modpost-icon,
+div.modpost-image img.modpost-image {
+	width:  auto;
+	height: auto;
+
+	object-fit: contain;
+	object-position: center;
+
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: contain;
+
+	border-radius: var(--universal-border-radius);
+}
+
+div.modposts-list img.modpost-icon {
+	max-width:  42px;
+	max-height: 42px;
+}
+
+div.modpost-image div.modpost-flex-container {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+}
+
+div.modpost-image div.modpost-flex-container img.modpost-image {
+	height: 100%;
+}
+
+div.modposts-list label.dialog-button div.left {
+	display: flex;
+	flex-direction: row;
+}
+
+div.modposts-list label.dialog-button,
+div.modposts-list label.dialog-button div.left {
+	align-items: center;
+}
+
+div.modposts-list label.dialog-button span#poster {
+	padding: 0 var(--universal-padding);
+}

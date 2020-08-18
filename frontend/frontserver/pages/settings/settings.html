@@ -3,18 +3,24 @@
 		{{ template "nav" . }}
 	
 		<main class="settings single">
-			{{ if .IsAdmin }}
 			<div class="admin-settings">
-				<legend>Administration</legend>
+				<legend>Management</legend>
 
+				{{ if .Username }}
+				<a role="button" class="small" href="/settings/posts">
+					Posts
+				</a>
+				{{ end }}
+
+				{{ if .IsAdmin }}
 				<a role="button" class="small" href="/settings/tokens">
 					Tokens
 				</a>
 				<a role="button" class="small" href="/settings/users">
 					Users
 				</a>
+				{{ end }}
 			</div>
-			{{ end }}
 
 			<div class="user-settings">
 				<legend>User</legend>

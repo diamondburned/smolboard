@@ -56,7 +56,6 @@ func bind(r *render.Mux) {
 	r.Get("/", home.Render)
 	r.Mount("/posts", gallery.Mount)
 	r.Mount("/posts/{id}", post.Mount)
-	r.Mount("/tokens", gallery.MountTokenRoutes)
 	r.Mount("/signin", signin.Mount)
 	r.Mount("/signup", signup.Mount)
 	r.Mount("/signout", signin.MountSignOut)

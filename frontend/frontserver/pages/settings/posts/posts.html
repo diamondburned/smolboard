@@ -1,0 +1,191 @@
+<body class="posts-settings">
+	<div class="posts-settings">
+		{{ template "nav" . }}
+	
+		<form class="posts-settings single seamless" method="get" action="/settings/posts">
+			{{/* Hack to make the Enter key add a tag */}}
+			<input type="submit" style="display: none">
+
+			<div class="modsubmit">
+				<h3>Actions <small>(selected {{ len .State.Selections }} posts)</small></h3>
+
+				<div class="modsubmit-form">
+					<button type="submit" class="small tertiary"
+							formmethod="post" formaction="/settings/posts/reset"
+					>
+						<span>Cancel</span>
+					</button>
+
+					<button type="submit" class="small secondary trigger-busy"
+							formmethod="post" formaction="/settings/posts/delete"
+					>
+						<span>Delete Posts</span>
+
+						<div class="busy-overlay">
+							<div role="progressbar" class="spinner primary"></div>
+						</div>
+					</button>
+
+					<button type="submit" class="small primary trigger-busy"
+							formmethod="post" formaction="/settings/posts/apply"
+					>
+						<span>Apply</span>
+
+						<div class="busy-overlay">
+							<div role="progressbar" class="spinner primary"></div>
+						</div>
+					</button>
+				</div>
+			</div>
+
+			<div class="modperm">
+				<legend>Action: Modify Permission</legend>
+
+				<div class="modperm-form">
+					<select id="permission" name="permission" class="small">
+						<option value="-1" id="unchanged">Unchanged</option>
+
+						{{ range .Me.AllowedPermissions }}
+						<option value="{{ .StringInt }}"
+								{{ if (eq . $.State.Permission) }}
+								selected
+								{{ end }}
+						>
+							{{ . }}
+						</option>
+						{{ end }}
+					</select>
+
+					<button type="submit" class="small">Change</button>
+				</div>
+			</div>
+
+			<div class="modtags">
+				<div class="header">
+					<legend>Action: Modify Tags</legend>
+					<span><sub>Prefix tags with a - (minus) to untag posts.</sub></span>
+				</div>
+
+				<div class="modtag-grid">
+					{{ range .State.Tags.Sorted }}
+					<button type="submit" class="tag {{ tagRemoveName . }}"
+							name="q" value="{{ tagEscape . }}"
+					>
+						{{ . }}
+					</button>
+
+					<button type="submit" class="remove-tag small"
+							name="untag" value="{{ . }}"
+					>
+						×
+					</button>
+					{{ end }}
+				</div>
+
+				<input type="text" class="add"
+					   name="tag" placeholder="Add tag 1; -Remove tag 2; ..."
+				/>
+			</div>
+
+			<div class="modposts">
+				<div class="header">
+					<h3>Posts</h3>
+
+					<div class="modposts-search">
+						<input type="text" class="small" name="q" value="{{ .Query }}"
+							   title="Filter Posts" placeholder="Filter"
+						>
+
+						<button type="submit" class="small" value="Submit" title="Submit Search">
+							<span class="icon-search"></span>
+						</button>
+					</div>
+				</div>
+
+				<div class="modposts-list">
+					{{ range $index, $post := .Posts }}
+					<div class="modposts-post">
+						<input type="checkbox" class="modposts-item" style="display: none"
+							   id="post-{{$index}}" name="id" value="{{$post.ID}}"
+							   {{ if (not ($.CanChangePost $post)) }} disabled {{ end }}
+							   {{ if ($.State.PostIsSelected $post) }} checked {{ end }}
+						>
+						<label for="post-{{$index}}" class="dialog-button">
+							<div class="left">
+								<label for="post-dialog-{{$index}}" class="modpost-icon">
+									<img alt="" class="modpost-icon" {{ $.SizeAttr $post }}
+										 src="{{ $.Session.PostThumbPath $post }}"
+										 style="background-image: url('{{ $.InlineImage $post }}')"
+									/>
+								</label>
+
+								<input type="checkbox" id="post-dialog-{{$index}}" class="modal">
+								<div role="dialog">
+									<div class="card large">
+										<label for="post-dialog-{{$index}}" class="modal-close"></label>
+
+										<div class="section header">
+											<h3>Post <small>{{$post.ID}}</small></h3>
+										</div>
+
+										<div class="section modpost-image">
+											<div class="modpost-flex-container">
+												<img alt="" class="modpost-image" {{ $.SizeAttr $post }}
+													 src="{{ $.Session.PostThumbPath $post }}"
+													 style="background-image: url('{{ $.InlineImage $post }}')"
+												/>
+											</div>
+										</div>
+
+										<div class="info table section">
+											<span>ID</span>
+											<a href="/posts/{{$post.ID}}" target="_blank">{{ $post.ID }}</a>
+		
+											<span>Poster</span>
+											{{ with $post.Poster }}
+											<button type="submit" id="poster" name="q" value="@{{.}}">
+												{{ . }}
+											</button>
+											{{ else }}
+											<span id="deleted-poster">Deleted User</span>
+											{{ end }}
+		
+											{{ with $post.CreatedTime }}
+											<span>Date</span>
+											<time datetime="{{ htmlTime . }}" id="created-time">
+												{{ humanizeTime . }}
+											</time>
+											{{ end }}
+			
+											<span>Permission</span>
+											<span id="permission">{{ $post.Permission }}</span>
+										</div>
+									</div>
+								</div>
+
+								<span id="poster">
+									Posted by
+									{{ with $post.Poster }} {{ . }}
+									{{ else }} Deleted User {{ end }}
+								</span>
+							</div>
+
+							{{ with $post.CreatedTime }}
+							<time datetime="{{ htmlTime . }}" id="created-time">
+								{{ humanizeTime . }}
+							</time>
+							{{ end }}
+						</label>
+					</div>
+					{{ end }}
+				</div>
+
+				<div class="paginator">
+					{{ template "pager" . }}
+				</div>
+			</div>
+		</form>
+	</div>
+
+	{{ template "footer" }}
+</body>

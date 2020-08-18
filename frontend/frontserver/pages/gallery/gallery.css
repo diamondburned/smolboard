@@ -3,38 +3,6 @@
 	flex-direction: column;
 }
 
-.uploading-overlay {
-	display: none;
-	transition: linear 75ms backdrop-filter;
-}
-/* Show the overlay on submit click */
-.uploader button.upload:focus        .uploading-overlay,
-.uploader button.upload:focus-within .uploading-overlay {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-
-	position: fixed;
-	width:  100vw;
-	height: 100vh;
-	top:  0;
-	left: 0;
-	z-index: 999999;
-
-	backdrop-filter: brightness(90%) blur(3px);
-
-	/* Disallow all mouse events. */
-	cursor: not-allowed;
-}
-
-.uploading-overlay .spinner {
-	--spinner-back-color: var(--back-color);
-	--spinner-fore-color: var(--fore-color);
-	width:  3rem;
-	height: 3rem;
-	border-width: .5rem;
-}
-
 .uploader button.upload,
 .uploader input[type="file"],
 .uploader select#permission {

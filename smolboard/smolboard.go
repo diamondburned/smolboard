@@ -22,7 +22,7 @@ const MaxUsernameLen = 128
 // NameIsLegal returns whether or not name contains illegal characters. It
 // returns nil if the name does not contain any.
 //
-// Legal runes include: digits, letters, an underscore and a dash.
+// Legal runes include: digits, letters and an underscore.
 func NameIsLegal(name string) error {
 	if name == "" {
 		return ErrIllegalName
@@ -91,7 +91,7 @@ func AllPermissions() []Permission {
 
 // IsValid returns true if the permission is valid.
 func (p Permission) IsValid() bool {
-	return p > 0 && p < permissionLen
+	return p >= PermissionGuest && p < permissionLen
 }
 
 // Int returns the permission as a stringed integer enum. This should only be
@@ -520,6 +520,28 @@ func (u UserPart) CanSetPostPermission(p PostExtended, target Permission) error 
 	}
 
 	return u.Permission.HasPermOverUser(target, posterPerm, u.Username == p.GetPoster())
+}
+
+// AllowedPermissions returns the list of allowed permissions this user can set
+// on their post.
+func (u UserPart) AllowedPermissions() []Permission {
+	// Guests can't upload.
+	if u.Permission == PermissionGuest {
+		return nil
+	}
+
+	var allPerm = AllPermissions()
+
+	// Iterate over all permissions.
+	for i, perm := range allPerm {
+		if perm > u.Permission {
+			// Slice 0:i to allow guests.
+			return allPerm[:i]
+		}
+	}
+
+	// Highest permission since the larger-than condition is never reached.
+	return allPerm
 }
 
 type UserList struct {

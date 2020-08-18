@@ -29,6 +29,16 @@ func ErrGetStatusCode(err error, orCode int) int {
 	return orCode
 }
 
+// ErrIs returns true if the given "is" error is wrapped in the "err" error.
+func ErrIs(err error, isErrors ...error) bool {
+	for _, is := range isErrors {
+		if strings.Contains(err.Error(), is.Error()) {
+			return true
+		}
+	}
+	return false
+}
+
 type ErrUnexpectedStatusCode struct {
 	Code   int
 	Body   string
@@ -60,6 +70,9 @@ type Client struct {
 	agent  string
 	remote string
 	socket bool
+
+	// Tries sets the number of tries to connect. Default 4.
+	Tries int
 }
 
 // NewClient makes a new client. Host is optional. This client is HTTPS by
@@ -76,6 +89,8 @@ func NewClient(host string) (*Client, error) {
 		},
 		ctx:  context.Background(),
 		host: u,
+
+		Tries: 4,
 	}
 
 	return client, nil
@@ -103,6 +118,8 @@ func NewSocketClient(host *url.URL, socket string) (*Client, error) {
 		ctx:    context.Background(),
 		host:   host,
 		socket: true,
+
+		Tries: 4,
 	}
 
 	return client, nil
@@ -207,20 +224,20 @@ func (c *Client) Endpoint() string {
 	return c.Host() + "/api/v1"
 }
 
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
+func (c *Client) DoOnce(q *http.Request) (*http.Response, error) {
 	// Override the UserAgent if we have one.
 	if c.agent != "" {
-		req.Header.Set("User-Agent", c.agent)
+		q.Header.Set("User-Agent", c.agent)
 	}
 
-	req.Header.Set("X-Forwarded-For", c.remote)
+	q.Header.Set("X-Forwarded-For", c.remote)
 
 	// Use HTTP if socket.
 	if c.socket {
-		req.URL.Scheme = "http"
+		q.URL.Scheme = "http"
 	}
 
-	r, err := c.Client.Do(req)
+	r, err := c.Client.Do(q)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to send request")
 	}
@@ -251,15 +268,81 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	return r, nil
 }
 
-func (c *Client) DoJSON(req *http.Request, resp interface{}) error {
-	q, err := c.Do(req)
+func (c *Client) Do(req func() (*http.Request, error)) (r *http.Response, err error) {
+
+Retry:
+	for i := 0; i < c.Tries; i++ {
+		q, err := req()
+		if err != nil {
+			return nil, err
+		}
+
+		// Override the UserAgent if we have one.
+		if c.agent != "" {
+			q.Header.Set("User-Agent", c.agent)
+		}
+
+		q.Header.Set("X-Forwarded-For", c.remote)
+
+		// Use HTTP if socket.
+		if c.socket {
+			q.URL.Scheme = "http"
+		}
+
+		r, err = c.Client.Do(q)
+		if err != nil {
+			err = errors.Wrap(err, "Failed to send request")
+			continue
+		}
+
+		switch {
+		case r.StatusCode < 200: // 0-199, not sure
+			fallthrough
+		case r.StatusCode > 499: // > 500, server error
+			fallthrough
+		case r.StatusCode == http.StatusTooManyRequests: // rate limited
+			r.Body.Close()
+			continue Retry
+		default:
+			break Retry // user error, break
+		}
+	}
+
+	if err == nil && (r.StatusCode < 200 || r.StatusCode > 299) {
+		// Start reading the body for the error.
+		defer r.Body.Close()
+
+		var unexp = ErrUnexpectedStatusCode{Code: r.StatusCode}
+
+		b, err := ioutil.ReadAll(r.Body)
+		if err == nil {
+			var errResp smolboard.ErrResponse
+			if json.Unmarshal(b, &errResp); errResp.Error != "" {
+				unexp.ErrMsg = errResp.Error
+			} else {
+				if len(b) > 100 {
+					unexp.Body = string(b[:97]) + "..."
+				} else {
+					unexp.Body = string(b)
+				}
+			}
+		}
+
+		return nil, unexp
+	}
+
+	return
+}
+
+func (c *Client) DoJSON(dst interface{}, q func() (*http.Request, error)) error {
+	r, err := c.Do(q)
 	if err != nil {
 		return err
 	}
-	defer q.Body.Close()
+	defer r.Body.Close()
 
-	if resp != nil {
-		err := json.NewDecoder(q.Body).Decode(resp)
+	if dst != nil {
+		err := json.NewDecoder(r.Body).Decode(dst)
 		return errors.Wrap(err, "Failed to decode JSON")
 	}
 
@@ -279,25 +362,21 @@ func (c *Client) Delete(path string, resp interface{}, v url.Values) error {
 }
 
 func (c *Client) Request(method, path string, resp interface{}, v url.Values) (err error) {
-	var r *http.Request
-
-	switch method {
-	case http.MethodPatch, http.MethodPost, http.MethodPut:
-		r, err = http.NewRequestWithContext(
-			c.ctx,
-			method, c.Endpoint()+path, strings.NewReader(v.Encode()),
-		)
-		if err == nil {
-			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	return c.DoJSON(resp, func() (r *http.Request, err error) {
+		switch method {
+		case http.MethodPatch, http.MethodPost, http.MethodPut:
+			r, err = http.NewRequestWithContext(
+				c.ctx,
+				method, c.Endpoint()+path, strings.NewReader(v.Encode()),
+			)
+			if err == nil {
+				r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			}
+		default:
+			var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
+			r, err = http.NewRequestWithContext(c.ctx, method, url, nil)
 		}
-	default:
-		var url = fmt.Sprintf("%s%s?%s", c.Endpoint(), path, v.Encode())
-		r, err = http.NewRequestWithContext(c.ctx, method, url, nil)
-	}
 
-	if err != nil {
-		return errors.Wrap(err, "Failed to create request")
-	}
-
-	return c.DoJSON(r, resp)
+		return r, errors.Wrap(err, "Failed to create request")
+	})
 }

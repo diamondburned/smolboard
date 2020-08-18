@@ -23,7 +23,6 @@
 
 .errorpage div.inner > ul {
 	margin: calc(2 * var(--universal-margin));
-	margin-top: 0;
 }
 
 .errorpage div.inner > ul > li {
@@ -42,6 +41,7 @@
 
 .errorpage li {
 	font-family: monospace;
+	word-wrap: break-word;
 }
 
 /* Ignore first ul */

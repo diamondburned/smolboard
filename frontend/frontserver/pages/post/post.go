@@ -100,15 +100,11 @@ func pageRender(r *render.Request) (render.Render, error) {
 	}
 
 	// Try and get the current user, but create a dummy user if we can't.
-	u, err := r.Session.Me()
+	u, err := r.Me()
 	if err != nil {
 		u = smolboard.UserPart{
 			Username: r.Username,
 		}
-	} else {
-		// Override the username in the common context so components will use
-		// this newly fetched username.
-		r.Username = u.Username
 	}
 
 	var poster = "Deleted User"

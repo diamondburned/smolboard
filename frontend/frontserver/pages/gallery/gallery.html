@@ -63,11 +63,11 @@
 						{{ end }}
 					</select>
 	
-					<button class="upload small" type="submit">
+					<button class="upload small trigger-busy" type="submit">
 						<span>Upload</span>
 
 						{{/* Hidden overlay to prevent clicks */}}
-						<div class="uploading-overlay">
+						<div class="busy-overlay">
 							<div role="progressbar" class="spinner primary"></div>
 						</div>
 					</button>
@@ -90,7 +90,7 @@
 							 src="{{ $.Session.PostThumbPath . }}"
 							 style="background-image: url('{{ $.InlineImage . }}')"
 						>
-						</object>
+						</img>
 					</a>
 				</figure>
 				{{ end }}

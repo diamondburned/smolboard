@@ -89,13 +89,10 @@ func renderPage(r *render.Request) (render.Render, error) {
 		return render.Empty, errors.Wrap(err, "Failed to get users")
 	}
 
-	m, err := r.Session.Me()
+	m, err := r.Me()
 	if err != nil {
 		return render.Empty, errors.Wrap(err, "Failed to get self")
 	}
-
-	// Use the username from the API as much as possible.
-	r.CommonCtx.Username = m.Username
 
 	var renderCtx = renderCtx{
 		CommonCtx: r.CommonCtx,

@@ -64,23 +64,11 @@ func (r renderCtx) AllowedTypes() string {
 }
 
 func (r renderCtx) AllowedUploadPerms() []smolboard.Permission {
-	// Guests can't upload.
-	if !r.IsMe() || r.User.Permission == smolboard.PermissionGuest {
+	if !r.IsMe() {
 		return nil
 	}
 
-	var allPerm = smolboard.AllPermissions()
-
-	// Iterate over all permissions.
-	for i, perm := range allPerm {
-		if perm > r.User.Permission {
-			// Slice 0:i to allow guests.
-			return allPerm[:i]
-		}
-	}
-
-	// Highest permission since the larger-than condition is never reached.
-	return allPerm
+	return r.User.AllowedPermissions()
 }
 
 func (r renderCtx) SizeAttr(p smolboard.Post) template.HTMLAttr {
@@ -113,13 +101,9 @@ func Mount(muxer render.Muxer) http.Handler {
 }
 
 func pageRender(r *render.Request) (render.Render, error) {
-	var page = 1
-	if str := r.FormValue("p"); str != "" {
-		p, err := strconv.Atoi(str)
-		if err != nil {
-			return render.Empty, errors.Wrap(err, "Failed to parse page")
-		}
-		page = p
+	page, err := pager.Page(r)
+	if err != nil {
+		return render.Empty, err
 	}
 
 	var query = r.FormValue("q")
@@ -182,7 +166,7 @@ func uploader(r *render.Request) (render.Render, error) {
 		q.Header[k] = v
 	}
 
-	p, err := r.Session.Client.Do(q)
+	p, err := r.Session.Client.DoOnce(q)
 	if err != nil {
 		return render.Empty, err
 	}
@@ -203,30 +187,4 @@ func uploader(r *render.Request) (render.Render, error) {
 
 	r.Redirect("/posts", http.StatusSeeOther)
 	return render.Empty, nil
-}
-
-func MountTokenRoutes(muxer render.Muxer) http.Handler {
-	mux := chi.NewMux()
-	mux.Post("/", muxer.M(createToken))
-	mux.Post("/{token}/delete", muxer.M(deleteToken))
-	return mux
-}
-
-func createToken(r *render.Request) (render.Render, error) {
-	u, err := strconv.Atoi(r.FormValue("uses"))
-	if err != nil {
-		return render.Empty, errors.Wrap(err, "Failed to parse uses value")
-	}
-
-	_, err = r.Session.CreateToken(u)
-	if err != nil {
-		return render.Empty, errors.Wrap(err, "Failed to create a token")
-	}
-
-	r.Redirect(r.Referer(), http.StatusSeeOther)
-	return render.Empty, nil
-}
-
-func deleteToken(r *render.Request) (render.Render, error) {
-	panic("Implement me")
 }

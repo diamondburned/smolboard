@@ -88,8 +88,8 @@
 							{{ $.Poster }}
 						</a>
 	
-						<span>Date</span>
 						{{ with .CreatedTime }}
+						<span>Date</span>
 						<time datetime="{{ htmlTime . }}" id="created-time">
 							{{ humanizeTime . }}
 						</time>

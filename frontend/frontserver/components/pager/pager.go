@@ -3,8 +3,10 @@ package pager
 import (
 	"html/template"
 	"math"
+	"strconv"
 
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -25,4 +27,17 @@ var Component = render.Component{
 		"dec": func(i int) int { return i - 1 },
 		"inc": func(i int) int { return i + 1 },
 	},
+}
+
+// Page returns a 1-indexed page count parsed from "p".
+func Page(r *render.Request) (int, error) {
+	var page = 1
+	if str := r.FormValue("p"); str != "" {
+		p, err := strconv.Atoi(str)
+		if err != nil {
+			return 0, errors.Wrap(err, "Failed to parse page")
+		}
+		page = p
+	}
+	return page, nil
 }

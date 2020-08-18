@@ -9,6 +9,7 @@ import (
 	"github.com/diamondburned/smolboard/client"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/footer"
 	"github.com/diamondburned/smolboard/frontend/frontserver/components/nav"
+	"github.com/diamondburned/smolboard/frontend/frontserver/pages/settings/posts"
 	"github.com/diamondburned/smolboard/frontend/frontserver/pages/settings/tokens"
 	"github.com/diamondburned/smolboard/frontend/frontserver/pages/settings/users"
 	"github.com/diamondburned/smolboard/frontend/frontserver/render"
@@ -65,7 +66,7 @@ func Mount(muxer render.Muxer) http.Handler {
 	mux.Post("/sessions/{sessionID}/delete", muxer.M(deleteSession))
 
 	mux.Mount("/tokens", tokens.Mount(muxer))
-
+	mux.Mount("/posts", posts.Mount(muxer))
 	mux.Route("/users", func(mux chi.Router) {
 		mux.Route("/@me", func(mux chi.Router) {
 			mux.Post("/delete", muxer.M(deleteUser))
@@ -79,7 +80,7 @@ func Mount(muxer render.Muxer) http.Handler {
 }
 
 func userPanel(r *render.Request) (render.Render, error) {
-	u, err := r.Session.Me()
+	u, err := r.Me()
 	if err != nil {
 		return render.Empty, errors.Wrap(err, "Failed to get current user")
 	}

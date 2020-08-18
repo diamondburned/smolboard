@@ -24,24 +24,31 @@ var tmpl = render.BuildPage("home", render.Page{
 
 type renderCtx struct {
 	render.CommonCtx
-	Errors []string
+	Errors [][]string
 }
 
 func RenderError(r *render.Request, err error) (render.Render, error) {
-	var errors = strings.SplitAfter(err.Error(), ": ")
+	var lines = strings.Split(err.Error(), "\n")
+	var errors = make([][]string, len(lines))
 
-	// Capitalize every single error's first letter.
-	for i, err := range errors {
-		f, sze := utf8.DecodeRune([]byte(err))
-		if sze > 0 {
-			f = unicode.ToUpper(f)
-			errors[i] = string(f) + err[sze:]
+	for i, line := range lines {
+		var parts = strings.SplitAfter(line, ": ")
+
+		// Capitalize every single error's first letter.
+		for i, err := range parts {
+			f, sze := utf8.DecodeRune([]byte(err))
+			if sze > 0 {
+				f = unicode.ToUpper(f)
+				parts[i] = string(f) + err[sze:]
+			}
+
+			// Append a period at the end for formality.
+			if i == len(parts)-1 {
+				parts[i] += "."
+			}
 		}
 
-		// Append a period at the end for formality.
-		if i == len(errors)-1 {
-			errors[i] += "."
-		}
+		errors[i] = parts
 	}
 
 	return render.Render{

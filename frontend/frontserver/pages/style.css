@@ -48,14 +48,14 @@ aside {
 	max-width: 325px;
 }
 
-main.single {
-	margin:  0 auto;
+.single {
+	margin:  0 auto !important;
 	width:     100%;
 	max-width: 800px;
 }
 
 aside > *,
-main.single > * {
+.single > * {
 	background: var(--form-back-color);
 	color: var(--form-fore-color);
 
@@ -99,7 +99,7 @@ aside form {
 	flex-direction: column;
 }
 
-main.single legend,
+.single legend,
 aside > * p,
 aside > * legend,
 aside form .tag,
@@ -174,6 +174,38 @@ label.dialog-button > *:first-child {
 
 /* Force overlay scrolling on container blocks. */
 body, div, main, aside { overflow: overlay }
+
+div.busy-overlay {
+	display: none;
+	transition: linear 75ms backdrop-filter;
+}
+/* Show the overlay on submit click */
+button.trigger-busy:focus        div.busy-overlay,
+button.trigger-busy:focus-within div.busy-overlay {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	position: fixed;
+	width:  100vw;
+	height: 100vh;
+	top:  0;
+	left: 0;
+	z-index: 999999;
+
+	backdrop-filter: brightness(90%) blur(3px);
+
+	/* Disallow all mouse events. */
+	cursor: not-allowed;
+}
+
+div.busy-overlay div.spinner {
+	--spinner-back-color: var(--back-color);
+	--spinner-fore-color: var(--fore-color);
+	width:  3rem;
+	height: 3rem;
+	border-width: .5rem;
+}
 
 *::-webkit-scrollbar,
 *::-webkit-scrollbar-track {

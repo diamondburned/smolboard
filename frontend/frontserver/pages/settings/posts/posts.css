@@ -17,13 +17,14 @@ div.modposts  > div.header div.modposts-search {
 	margin: auto calc(2 * var(--universal-margin));
 }
 
+div.modtags  > div.modtag-form,
 div.modperm  > div.modperm-form,
 div.modposts > div.header div.modposts-search {
 	display: flex;
 }
 
-div.modsubmit > div.modsubmit-form > .small,
 div.modperm   > div.modperm-form   > .small,
+div.modsubmit > div.modsubmit-form > .small,
 div.modposts  > div.header div.modposts-search > .small {
 	margin: 0;
 	margin-left: var(--universal-margin);
@@ -40,8 +41,14 @@ div.modtags div.modtag-grid {
 	grid-template-columns: 1fr min-content;
 }
 
-div.modtags input {
+div.modtags > div.modtag-form,
+div.modtags > div.modtag-form input {
+	flex: 1;
+}
+
+div.modtags > div.modtag-form input {
 	margin: var(--universal-margin);
+	margin-right: 0;
 }
 
 div.modposts > div.paginator {

@@ -144,8 +144,6 @@ func serveThumbnail(w http.ResponseWriter, r tx.Request, name string) error {
 	// Set up caching. Max age is 7 days.
 	w.Header().Set("Cache-Control", "private, max-age=604800")
 
-	log.Println("Name:", name)
-
 	// Check if the file is in the cache. If it is, return.
 	b, err := thumbcache.Get(name)
 	if err == nil {

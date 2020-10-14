@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/url"
 	"runtime/debug"
 	"time"
 
@@ -99,6 +100,17 @@ func (c *DBConfig) Validate() error {
 	return nil
 }
 
+var pragmas = url.Values{
+	"_busy_timeout": {"10000"},
+	"_journal":      {"WAL"},
+	"_sync":         {"NORMAL"},
+	"cache":         {"shared"},
+}
+
+func URLWithPragmas(file string) string {
+	return fmt.Sprintf("file:%s?%s", file, pragmas.Encode())
+}
+
 type Database struct {
 	*sqlx.DB
 	Config DBConfig
@@ -109,10 +121,13 @@ func NewDatabase(config DBConfig) (*Database, error) {
 		return nil, err
 	}
 
-	d, err := sqlx.Open("sqlite3", config.DatabasePath)
+	d, err := sqlx.Open("sqlite3", URLWithPragmas(config.DatabasePath))
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to open sqlite3 db")
 	}
+
+	// Allow about 32 connection? Unsure.
+	d.SetMaxOpenConns(32)
 
 	db := &Database{d, config}
 

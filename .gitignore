@@ -1,4 +1,5 @@
 *.test
+.direnv
 config.toml
 frontend/config.toml
 main.wasm

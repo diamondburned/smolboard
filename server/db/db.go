@@ -292,7 +292,7 @@ func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {
 		return err
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func errIsConstraint(err error) bool {

@@ -4,9 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"net/url"
-	"runtime/debug"
 	"time"
 
 	"github.com/diamondburned/duration"
@@ -219,45 +217,10 @@ func (d *Database) createOwner(password string) error {
 	})
 }
 
-// Transaction acquires a transaction lock in SQLite. This bugs me so much. Why
-// did I do this? I guess you could say that it boils down to not having any
-// data race at all. But think about this scenario: if 2 viewers access the
-// webpage within the same millisecond, then one would have to wait a few
-// additional milliseconds. This BUGS ME!!!! WHY!!!! WHY DID I DO THIS?!
-type Transaction struct {
-	*sqlx.Tx
-
-	// As we acquire an entire transaction, it is safe to store our own local
-	// session state as long as we keep it up to date on our own calls.
-	Session smolboard.Session
-	config  DBConfig
-}
-
-func (d *Database) begin(ctx context.Context, session string) (*Transaction, error) {
-	t, err := d.DB.BeginTxx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	tx := &Transaction{
-		Tx:     t,
-		config: d.Config,
-	}
-
-	// Verify session.
-	s, err := tx.querySession(session)
-	if err != nil {
-		return nil, err
-	}
-
-	tx.Session = *s
-	return tx, nil
-}
-
 type TxHandler = func(*Transaction) error
 
 func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) error {
-	t, err := d.begin(ctx, session)
+	t, err := BeginTx(ctx, d.DB, session)
 	if err != nil {
 		return errors.Wrap(err, "Failed to begin transaction")
 	}
@@ -270,29 +233,18 @@ func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) er
 	return t.Commit()
 }
 
-var readOnlyOpts = &sql.TxOptions{
-	Isolation: sql.LevelSnapshot,
-	ReadOnly:  true,
-}
-
 func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {
-	t, err := d.DB.BeginTxx(ctx, readOnlyOpts)
+	t, err := BeginTx(ctx, d.DB, "")
 	if err != nil {
-		log.Println("Failed to acquire Guest.", string(debug.Stack()))
-		return errors.Wrap(err, "Failed to begin transaction")
+		return errors.Wrap(err, "Failed to begin guest transaction")
 	}
 	defer t.Rollback()
 
-	tx := &Transaction{
-		Tx:     t,
-		config: d.Config,
-	}
-
-	if err := fn(tx); err != nil {
+	if err := fn(t); err != nil {
 		return err
 	}
 
-	return tx.Commit()
+	return t.Commit()
 }
 
 func errIsConstraint(err error) bool {
@@ -309,14 +261,9 @@ func errIsConstraint(err error) bool {
 	return false
 }
 
-func (d *Transaction) execChanged(exec string, v ...interface{}) (bool, error) {
-	return execChanged(d.Tx.Tx, exec, v...)
-}
-
 // execChanged returns false if no rows were affected.
-func execChanged(tx *sql.Tx, exec string, v ...interface{}) (bool, error) {
-	// Ensure that we are deleting only this user's token.
-	r, err := tx.Exec(exec, v...)
+func (d *Transaction) execChanged(exec string, v ...interface{}) (bool, error) {
+	r, err := d.Exec(exec, v...)
 	if err != nil {
 		return false, errors.Wrap(err, "Failed to delete token")
 	}

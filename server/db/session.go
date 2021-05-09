@@ -115,7 +115,7 @@ func (d *Transaction) Signin(user, pass, UA string) (*smolboard.Session, error) 
 		return nil, err
 	}
 
-	r := d.QueryRow("SELECT passhash FROM users WHERE username = ?", user)
+	r := d.QueryRowx("SELECT passhash FROM users WHERE username = ?", user)
 
 	var passhash []byte
 	if err := r.Scan(&passhash); err != nil {

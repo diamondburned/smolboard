@@ -5,6 +5,7 @@ go 1.14
 replace github.com/bbrks/go-blurhash => github.com/diamondburned/go-blurhash v0.0.0-20200729185525-9fa9a8820d7f
 
 require (
+	github.com/PuerkitoBio/goquery v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.0
 	github.com/bbrks/go-blurhash v0.0.0-20190629155354-b1b1c817265b
 	github.com/bwmarrin/snowflake v0.3.0
@@ -17,10 +18,10 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/google/btree v1.0.0 // indirect
 	github.com/gorilla/schema v1.1.0
-	github.com/jmoiron/sqlx v1.2.0
+	github.com/jmoiron/sqlx v1.3.3
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-shellwords v1.0.10
-	github.com/mattn/go-sqlite3 v1.14.0
+	github.com/mattn/go-sqlite3 v1.14.6
 	github.com/mileusna/useragent v1.0.1
 	github.com/pelletier/go-toml v1.8.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible

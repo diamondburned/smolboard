@@ -234,17 +234,7 @@ func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) er
 }
 
 func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {
-	t, err := BeginTx(ctx, d, "")
-	if err != nil {
-		return errors.Wrap(err, "Failed to begin guest transaction")
-	}
-
-	if err := fn(t); err != nil {
-		t.Rollback()
-		return err
-	}
-
-	return t.Commit()
+	return d.Acquire(ctx, "", fn)
 }
 
 func errIsConstraint(err error) bool {

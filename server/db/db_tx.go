@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"sync"
 
 	"github.com/diamondburned/smolboard/smolboard"
 	"github.com/jmoiron/sqlx"
@@ -17,7 +18,10 @@ type Transaction struct {
 	*sqlx.Conn
 	ctx    context.Context
 	config DBConfig
-	closed bool
+
+	closeMu sync.Mutex
+	closed  bool
+	isTx    bool
 
 	// As we acquire an entire transaction, it is safe to store our own local
 	// session state as long as we keep it up to date on our own calls.
@@ -51,26 +55,26 @@ func BeginTx(ctx context.Context, db *Database, session string) (*Transaction, e
 			return nil, err
 		}
 
+		tx.isTx = true
 		tx.Session = *s
 	}
 
 	return &tx, nil
 }
 
-func (tx *Transaction) isTx() bool {
-	return !tx.Session.IsZero()
-}
-
 // Commit commits the changes. It does not close the transaction.
 func (tx *Transaction) Commit() error {
+	tx.closeMu.Lock()
+	defer tx.closeMu.Unlock()
+
 	if tx.closed {
 		return nil
 	}
-
 	tx.closed = true
+
 	defer tx.Conn.Close()
 
-	if tx.isTx() {
+	if tx.isTx {
 		_, err := tx.Conn.ExecContext(tx.ctx, "COMMIT")
 		if err != nil {
 			return err
@@ -83,14 +87,17 @@ func (tx *Transaction) Commit() error {
 // Rollback rolls back the transaction and closes it. This method must ALWAYS be
 // called when done.
 func (tx *Transaction) Rollback() error {
+	tx.closeMu.Lock()
+	defer tx.closeMu.Unlock()
+
 	if tx.closed {
 		return nil
 	}
-
 	tx.closed = true
+
 	defer tx.Conn.Close()
 
-	if tx.isTx() {
+	if tx.isTx {
 		_, err := tx.Conn.ExecContext(tx.ctx, "ROLLBACK")
 		if err != nil {
 			return err

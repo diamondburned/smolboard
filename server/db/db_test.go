@@ -71,15 +71,14 @@ func testNewOwner(t *testing.T, db *Database, user, pass string) *smolboard.Sess
 func testBeginTx(t *testing.T, db *Database, token string) *Transaction {
 	t.Helper()
 
-	tx, err := db.begin(context.Background(), token)
+	tx, err := BeginTx(context.Background(), db, token)
 	if err != nil {
 		t.Fatal("Failed to begin transaction:", err)
 	}
 
 	t.Cleanup(func() {
 		if err := tx.Commit(); err != nil {
-			tx.Rollback()
-			t.Fatal("Failed to commit:", err)
+			t.Error("Failed to commit:", err)
 		}
 	})
 

@@ -124,8 +124,8 @@ func NewDatabase(config DBConfig) (*Database, error) {
 		return nil, errors.Wrap(err, "Failed to open sqlite3 db")
 	}
 
-	// Allow about 32 connection? Unsure.
-	d.SetMaxOpenConns(32)
+	// Allow about 1024 connection? Unsure.
+	d.SetMaxOpenConns(1024)
 
 	db := &Database{d, config}
 
@@ -220,13 +220,13 @@ func (d *Database) createOwner(password string) error {
 type TxHandler = func(*Transaction) error
 
 func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) error {
-	t, err := BeginTx(ctx, d.DB, session)
+	t, err := BeginTx(ctx, d, session)
 	if err != nil {
 		return errors.Wrap(err, "Failed to begin transaction")
 	}
-	defer t.Rollback()
 
 	if err := fn(t); err != nil {
+		t.Rollback()
 		return err
 	}
 
@@ -234,13 +234,13 @@ func (d *Database) Acquire(ctx context.Context, session string, fn TxHandler) er
 }
 
 func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {
-	t, err := BeginTx(ctx, d.DB, "")
+	t, err := BeginTx(ctx, d, "")
 	if err != nil {
 		return errors.Wrap(err, "Failed to begin guest transaction")
 	}
-	defer t.Rollback()
 
 	if err := fn(t); err != nil {
+		t.Rollback()
 		return err
 	}
 

@@ -38,7 +38,7 @@ func TestSession(t *testing.T) {
 
 	t.Log("Signed up as", s.Username)
 
-	tx, err := d.begin(context.Background(), s.AuthToken)
+	tx, err := BeginTx(context.Background(), d, s.AuthToken)
 	if err != nil {
 		t.Fatal("Failed to get newly created session:", err)
 	}
@@ -101,7 +101,7 @@ func TestSession(t *testing.T) {
 	t.Log("Committed.")
 
 	// Try and start a session with a signed out token.
-	_, err = d.begin(context.Background(), n.AuthToken)
+	_, err = BeginTx(context.Background(), d, n.AuthToken)
 	if !errors.Is(err, smolboard.ErrSessionExpired) {
 		t.Fatal("Unexpected error looking for deleted session:", err)
 	}

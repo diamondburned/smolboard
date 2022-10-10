@@ -47,11 +47,11 @@ func (t Theme) String() string {
 func (t Theme) URL() string {
 	switch t {
 	case LightTheme:
-		return "https://minicss.org/flavorFiles/mini-default.min.css"
+		return "https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css"
 	case DarkTheme:
-		return "https://minicss.org/flavorFiles/mini-dark.min.css"
+		return "https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-dark.min.css"
 	case NordTheme:
-		return "https://minicss.org/flavorFiles/mini-nord.min.css"
+		return "https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-nord.min.css"
 	}
 
 	return ""

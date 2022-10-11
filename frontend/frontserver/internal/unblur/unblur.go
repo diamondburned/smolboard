@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"image"
+	"image/jpeg"
 
 	"github.com/bbrks/go-blurhash"
 	"github.com/diamondburned/smolboard/server/httperr"
 	"github.com/diamondburned/smolboard/smolboard"
-	"github.com/pixiv/go-libjpeg/jpeg"
 	"github.com/pkg/errors"
 )
 
@@ -25,10 +25,8 @@ func InlinePost(p smolboard.Post) (string, error) {
 	return InlineJPEG(p.Attributes.Blurhash, p.Attributes.Width, p.Attributes.Height)
 }
 
-var JPEGOptions = &jpeg.EncoderOptions{
-	Quality:        65,
-	OptimizeCoding: true,
-	DCTMethod:      jpeg.DCTMethod(jpeg.DCTFloat),
+var JPEGOptions = &jpeg.Options{
+	Quality: 65,
 }
 
 func InlineJPEG(hash string, w, h int) (string, error) {

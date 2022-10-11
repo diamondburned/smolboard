@@ -25,8 +25,6 @@ refer to the frontend section below.
 
 #### Dependencies
 
-- libsqlite3
-- libjpeg
 - FFmpeg (optional)
 - FFprobe (optional)
 
@@ -42,5 +40,5 @@ that points to the backend.
 
 #### Dependencies
 
-- libjpeg
+None.
 

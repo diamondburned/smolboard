@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/draw"
+	"image/jpeg"
 	"log"
 	"net/http"
 	"os"
@@ -19,7 +20,6 @@ import (
 	"github.com/disintegration/imaging"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/pixiv/go-libjpeg/jpeg"
 	"github.com/pkg/errors"
 )
 
@@ -117,10 +117,8 @@ func ServeThumbnail(r tx.Request) (interface{}, error) {
 	}, nil
 }
 
-var jpegOpts = &jpeg.EncoderOptions{
-	Quality:        95,
-	OptimizeCoding: true,
-	DCTMethod:      jpeg.DCTMethod(jpeg.DCTFloat),
+var jpegOpts = &jpeg.Options{
+	Quality: 95,
 }
 
 func serveThumbnail(w http.ResponseWriter, r tx.Request, name string) error {

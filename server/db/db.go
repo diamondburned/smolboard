@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/diamondburned/duration"
@@ -12,14 +11,18 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 
-	"github.com/mattn/go-sqlite3"
-	_ "github.com/mattn/go-sqlite3"
+	"modernc.org/sqlite"
+	sqlitelib "modernc.org/sqlite/lib"
 )
 
 // TODO: add avatar URL (host whitelisted)
 // TODO: add tokens creation time
 
 var migrations = []string{`
+	PRAGMA strict = ON;
+	PRAGMA foreign_keys = ON;
+	PRAGMA journal_mode = WAL;
+
 	CREATE TABLE users (
 		username   TEXT    PRIMARY KEY,
 		jointime   INTEGER NOT NULL, -- unixnano 
@@ -98,17 +101,6 @@ func (c *DBConfig) Validate() error {
 	return nil
 }
 
-var pragmas = url.Values{
-	"_busy_timeout": {"10000"},
-	"_journal":      {"WAL"},
-	"_sync":         {"NORMAL"},
-	"cache":         {"shared"},
-}
-
-func URLWithPragmas(file string) string {
-	return fmt.Sprintf("file:%s?%s", file, pragmas.Encode())
-}
-
 type Database struct {
 	*sqlx.DB
 	Config DBConfig
@@ -119,13 +111,10 @@ func NewDatabase(config DBConfig) (*Database, error) {
 		return nil, err
 	}
 
-	d, err := sqlx.Open("sqlite3", URLWithPragmas(config.DatabasePath))
+	d, err := sqlx.Open("sqlite3", config.DatabasePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to open sqlite3 db")
 	}
-
-	// Allow about 1024 connection? Unsure.
-	d.SetMaxOpenConns(1024)
 
 	db := &Database{d, config}
 
@@ -238,17 +227,11 @@ func (d *Database) AcquireGuest(ctx context.Context, fn TxHandler) error {
 }
 
 func errIsConstraint(err error) bool {
-	if err != nil {
-		sqlerr := sqlite3.Error{}
-
-		// Unique constraint means we're attempting to make a username that's
-		// colliding. We could return an error close to that.
-		if errors.As(err, &sqlerr) && sqlerr.Code == sqlite3.ErrConstraint {
-			return true
-		}
+	var sqliteErr *sqlite.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
 	}
-
-	return false
+	return sqliteErr.Code() == sqlitelib.SQLITE_CONSTRAINT_UNIQUE
 }
 
 // execChanged returns false if no rows were affected.

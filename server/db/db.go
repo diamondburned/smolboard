@@ -18,10 +18,13 @@ import (
 // TODO: add avatar URL (host whitelisted)
 // TODO: add tokens creation time
 
-var migrations = []string{`
+const pragmas = `
 	PRAGMA strict = ON;
 	PRAGMA foreign_keys = ON;
 	PRAGMA journal_mode = WAL;
+`
+
+var migrations = []string{`
 
 	CREATE TABLE users (
 		username   TEXT    PRIMARY KEY,
@@ -111,15 +114,14 @@ func NewDatabase(config DBConfig) (*Database, error) {
 		return nil, err
 	}
 
-	d, err := sqlx.Open("sqlite3", config.DatabasePath)
+	d, err := sqlx.Open("sqlite", config.DatabasePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to open sqlite3 db")
 	}
 
 	db := &Database{d, config}
 
-	// Enable foreign key constraints.
-	if err := db.enableFK(); err != nil {
+	if err := db.applyPragmas(); err != nil {
 		return nil, errors.Wrap(err, "Failed to enable foreign key constraints")
 	}
 
@@ -194,8 +196,8 @@ func (d *Database) setUserVersion(tx *sql.Tx, v int) error {
 	return err
 }
 
-func (d *Database) enableFK() error {
-	_, err := d.Exec("PRAGMA foreign_keys = ON")
+func (d *Database) applyPragmas() error {
+	_, err := d.Exec(pragmas)
 	return err
 }
 

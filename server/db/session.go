@@ -135,6 +135,10 @@ func (d *Transaction) Signin(user, pass, UA string) (*smolboard.Session, error) 
 }
 
 func (d *Transaction) Signup(user, pass, token, UA string) (*smolboard.Session, error) {
+	if err := ValidateUser(user, pass); err != nil {
+		return nil, err
+	}
+
 	// Verify the token.
 	if err := d.useToken(token); err != nil {
 		return nil, err

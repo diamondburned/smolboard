@@ -9,6 +9,18 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func ValidateUser(username, password string) error {
+	if err := smolboard.NameIsLegal(username); err != nil {
+		return err
+	}
+
+	if len(password) < smolboard.MinimumPassLength {
+		return smolboard.ErrPasswordTooShort
+	}
+
+	return nil
+}
+
 func VerifyPassword(hash []byte, password string) error {
 	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
 
@@ -25,12 +37,8 @@ func VerifyPassword(hash []byte, password string) error {
 // username that's inserted into the database is guaranteed to be the same as
 // the argument.
 func (d *Transaction) createUser(username, password string, perm smolboard.Permission) error {
-	if err := smolboard.NameIsLegal(username); err != nil {
+	if err := ValidateUser(username, password); err != nil {
 		return err
-	}
-
-	if len(password) < smolboard.MinimumPassLength {
-		return smolboard.ErrPasswordTooShort
 	}
 
 	p, err := bcrypt.GenerateFromPassword([]byte(password), smolboard.HashCost)
